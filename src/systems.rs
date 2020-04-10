@@ -1,4 +1,5 @@
 use crate::components::*;
+use ggez::Context;
 use specs::prelude::*;
 
 pub struct IntegrateSys;
@@ -6,7 +7,7 @@ impl<'a> System<'a> for IntegrateSys {
     type SystemData = (WriteStorage<'a, Position>, ReadStorage<'a, Velocity>);
 
     fn run(&mut self, (mut positions, vels): Self::SystemData) {
-        (&mut positions, &vels).join().for_each(|(pos, vel)| {
+        (&mut positions, &vels).par_join().for_each(|(pos, vel)| {
             pos.0 += vel.0;
         });
     }
@@ -57,7 +58,7 @@ impl<'a> System<'a> for StarMoveSys {
         (stars, mut positions, mut vels, mut colorects, star_info): Self::SystemData,
     ) {
         (&stars, &mut positions, &mut vels, &mut colorects)
-            .join()
+            .par_join()
             .for_each(|(_, pos, vel, colorect)| {
                 if pos.0.y > crate::SCREEN_HEIGHT {
                     let (npos, nvel, ncolorect) = star_info.new_star();
@@ -66,5 +67,62 @@ impl<'a> System<'a> for StarMoveSys {
                     *colorect = ncolorect;
                 }
             });
+    }
+}
+
+#[derive(Default)]
+pub struct SpawnBulletSys;
+
+impl<'a> System<'a> for SpawnBulletSys {
+    type SystemData = (
+        WriteStorage<'a, Player>,
+        WriteStorage<'a, Position>,
+        WriteStorage<'a, Velocity>,
+        WriteStorage<'a, ColorRect>,
+        WriteStorage<'a, Bullet>,
+        Entities<'a>,
+        Read<'a, PlayerEntity>,
+    );
+
+    fn run(
+        &mut self,
+        (
+            mut players,
+            mut positions,
+            mut vels,
+            mut color_rects,
+            mut bullets,
+            entities,
+            player_entity,
+        ): Self::SystemData,
+    ) {
+        let player_data = &mut players.get_mut(player_entity.0).unwrap();
+        let player_vel = vels.get(player_entity.0).unwrap().0;
+
+        if player_data.reload_timer == 0 {
+            player_data.reload_timer = player_data.reload_speed;
+            let player_pos = positions.get(player_entity.0).unwrap().0;
+            let bullet = new_bullet(player_data.bullet_type, player_pos, player_vel);
+            entities
+                .build_entity()
+                .with(bullet.0, &mut positions)
+                .with(bullet.1, &mut vels)
+                .with(bullet.2, &mut color_rects)
+                .with(bullet.3, &mut bullets)
+                .build();
+        }
+    }
+}
+
+pub struct ReloadTimerSys;
+impl<'a> System<'a> for ReloadTimerSys {
+    type SystemData = (WriteStorage<'a, Player>, Read<'a, PlayerEntity>);
+
+    fn run(&mut self, (mut players, player_entity): Self::SystemData) {
+        let player_data = &mut players.get_mut(player_entity.0).unwrap();
+
+        if player_data.reload_timer != 0 {
+            player_data.reload_timer -= 1;
+        }
     }
 }

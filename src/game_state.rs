@@ -1,10 +1,8 @@
 use ggez::{
     event::EventHandler,
-    graphics::{
-        self, Color, DrawMode, DrawParam, Font, MeshBuilder, Rect, Scale, Text, TextFragment,
-    },
+    graphics::{self, Color, DrawMode, DrawParam, MeshBuilder, Rect},
     input::{self, keyboard::KeyCode},
-    timer, Context, GameResult,
+    Context, GameResult,
 };
 use specs::prelude::*;
 
@@ -27,8 +25,14 @@ impl<'a, 'b> GameState<'a, 'b> {
 
 impl EventHandler for GameState<'_, '_> {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
+        self.world.maintain();
         if ggez::timer::ticks(&ctx) % 120 == 0 {
             dbg!(ggez::timer::fps(&ctx));
+        }
+
+        if input::keyboard::is_key_pressed(ctx, KeyCode::Space) {
+            let mut spawn_sys = systems::SpawnBulletSys::default();
+            spawn_sys.run_now(&mut self.world);
         }
 
         {
@@ -36,7 +40,7 @@ impl EventHandler for GameState<'_, '_> {
             let player_vel = &mut velocities
                 .get_mut(self.world.fetch::<PlayerEntity>().0)
                 .unwrap();
-            player_vel.0 /= 1.35;
+            player_vel.0 /= 1.45;
             if input::keyboard::is_key_pressed(ctx, KeyCode::W) {
                 player_vel.0.y -= 3.0;
             }
@@ -61,11 +65,20 @@ impl EventHandler for GameState<'_, '_> {
 
         let positions = self.world.read_storage::<Position>();
         let colorects = self.world.read_storage::<ColorRect>();
+        let stars = self.world.read_storage::<Star>();
 
         let mut builder = MeshBuilder::new();
-        (&positions, &colorects).join().for_each(|(pos, colorect)| {
-            draw_colorect(&mut builder, (*pos).into(), &colorect);
-        });
+        (&positions, &colorects, &stars)
+            .join()
+            .for_each(|(pos, colorect, _)| {
+                draw_colorect(&mut builder, (*pos).into(), &colorect);
+            });
+
+        (&positions, &colorects, !&stars)
+            .join()
+            .for_each(|(pos, colorect, _)| {
+                draw_colorect(&mut builder, (*pos).into(), &colorect);
+            });
 
         let mesh = builder.build(ctx)?;
         graphics::draw(ctx, &mesh, DrawParam::new())?;

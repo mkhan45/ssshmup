@@ -1,15 +1,13 @@
 use components::PlayerEntity;
-use ggez::{event, graphics::Font, GameResult};
+use ggez::{event, GameResult};
 use specs::prelude::*;
-
-use rand;
 
 mod components;
 mod game_state;
 mod systems;
 
-const SCREEN_WIDTH: f32 = 576.0;
-const SCREEN_HEIGHT: f32 = 1024.0;
+const SCREEN_WIDTH: f32 = 576.0 * 0.75;
+const SCREEN_HEIGHT: f32 = 1024.0 * 0.75;
 
 fn main() -> GameResult {
     let (ctx, event_loop) = &mut ggez::ContextBuilder::new("Tetrs", "Fish")
@@ -30,10 +28,11 @@ fn main() -> GameResult {
     world.register::<components::ColorRect>();
     world.register::<components::HP>();
     world.register::<components::Enemy>();
+    world.register::<components::Bullet>();
 
     world.insert(components::StarInfo {
-        num_stars: 75,
-        size: 3.0,
+        num_stars: 150,
+        size: 2.5,
         size_variance: 1.5,
         vel: 5.0,
         vel_variance: 2.0,
@@ -43,12 +42,16 @@ fn main() -> GameResult {
     let player = components::create_player(&mut world, &player);
     world.insert(PlayerEntity(player));
 
-    let enemy = components::new_enemy(components::Enemy::BasicEnemy, [288.0, 100.0].into());
-    let enemy = components::create_enemy(&mut world, &enemy);
+    let enemy = components::new_enemy(
+        components::Enemy::BasicEnemy,
+        [SCREEN_WIDTH / 2.0, 100.0].into(),
+    );
+    components::create_enemy(&mut world, &enemy);
 
     let mut dispatcher = DispatcherBuilder::new()
         .with(systems::IntegrateSys, "integrate_system", &[])
         .with(systems::StarMoveSys, "star_system", &[])
+        .with(systems::ReloadTimerSys, "reload_timer_sys", &[])
         .build();
 
     dispatcher.setup(&mut world);
