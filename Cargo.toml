@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 ggez = "0.5"
 specs = { version = "0.15.1", features = ["specs-derive", "serde"] }
+rand = "0.7.3"

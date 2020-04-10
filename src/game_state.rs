@@ -1,43 +1,57 @@
-use specs::prelude::*;
 use ggez::{
     event::EventHandler,
-    graphics::{self, Color, DrawMode, DrawParam, Font, MeshBuilder, Scale, Text, TextFragment, Rect},
+    graphics::{
+        self, Color, DrawMode, DrawParam, Font, MeshBuilder, Rect, Scale, Text, TextFragment,
+    },
     input::{self, keyboard::KeyCode},
     timer, Context, GameResult,
 };
+use specs::prelude::*;
 
 use crate::components::*;
+use crate::systems;
 
-pub struct GameState {
+pub struct GameState<'a, 'b> {
     world: World,
+    dispatcher: Dispatcher<'a, 'b>,
 }
 
-impl GameState {
-    pub fn new(world: World) -> Self {
-        GameState {
-            world,
-        } 
+impl<'a, 'b> GameState<'a, 'b> {
+    pub fn new(mut world: World, dispatcher: Dispatcher<'a, 'b>) -> Self {
+        let mut init_star_sys = systems::StarInitSys::default();
+        specs::RunNow::setup(&mut init_star_sys, &mut world);
+        init_star_sys.run_now(&mut world);
+        GameState { world, dispatcher }
     }
 }
 
-impl EventHandler for GameState {
+impl EventHandler for GameState<'_, '_> {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
+        if ggez::timer::ticks(&ctx) % 120 == 0 {
+            dbg!(ggez::timer::fps(&ctx));
+        }
+
         {
-            let mut positions = self.world.write_storage::<Position>();
-            let mut player_pos = &mut positions.get_mut(self.world.fetch::<PlayerEntity>().0).unwrap();
+            let mut velocities = self.world.write_storage::<Velocity>();
+            let player_vel = &mut velocities
+                .get_mut(self.world.fetch::<PlayerEntity>().0)
+                .unwrap();
+            player_vel.0 /= 1.35;
             if input::keyboard::is_key_pressed(ctx, KeyCode::W) {
-                player_pos.0.y -= 10.0;
+                player_vel.0.y -= 3.0;
             }
             if input::keyboard::is_key_pressed(ctx, KeyCode::S) {
-                player_pos.0.y += 10.0;
+                player_vel.0.y += 3.0;
             }
             if input::keyboard::is_key_pressed(ctx, KeyCode::A) {
-                player_pos.0.x -= 10.0;
+                player_vel.0.x -= 3.0;
             }
             if input::keyboard::is_key_pressed(ctx, KeyCode::D) {
-                player_pos.0.x += 10.0;
+                player_vel.0.x += 3.0;
             }
         }
+
+        self.dispatcher.dispatch(&mut self.world);
 
         Ok(())
     }
@@ -49,7 +63,7 @@ impl EventHandler for GameState {
         let colorects = self.world.read_storage::<ColorRect>();
 
         let mut builder = MeshBuilder::new();
-        (&positions, &colorects).join().for_each(|(pos, colorect)|{
+        (&positions, &colorects).join().for_each(|(pos, colorect)| {
             draw_colorect(&mut builder, (*pos).into(), &colorect);
         });
 
