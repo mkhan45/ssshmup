@@ -32,6 +32,18 @@ impl Default for Velocity {
 #[storage(VecStorage)]
 pub struct Sprite(pub Image);
 
+#[derive(Clone, Debug, PartialEq, Component)]
+#[storage(DenseVecStorage)]
+pub struct AnimatedSprite {
+    pub frames: Vec<Image>,
+    pub current_frame: u8,
+    pub temporary: bool,
+}
+
+#[derive(Clone, Copy, Default, Component)]
+#[storage(NullStorage)]
+pub struct Explosion;
+
 #[derive(Clone, Copy, Debug, PartialEq, Component)]
 #[storage(VecStorage)]
 pub struct ColorRect {
@@ -122,8 +134,8 @@ impl Default for Player {
     fn default() -> Self {
         Player {
             bullet_type: BulletType::BasicBullet,
-            reload_speed: 10,
-            reload_timer: 10,
+            reload_speed: 6,
+            reload_timer: 6,
         }
     }
 }
@@ -148,11 +160,6 @@ pub fn new_player(sprite: Image, hp: u32) -> PlayerTuple {
     );
     let vel = Velocity::default();
     let hp = HP(hp);
-    // let rect = ColorRect {
-    //     color: Color::new(1.0, 1.0, 1.0, 1.0),
-    //     w: 50.0,
-    //     h: 80.0,
-    // };
 
     (pos, vel, hp, Sprite(sprite), Player::default())
 }
@@ -211,3 +218,6 @@ pub struct Sprites(pub HashMap<String, Image>);
 
 #[derive(Clone)]
 pub struct BulletSpriteBatch(pub SpriteBatch);
+
+#[derive(Clone, Default)]
+pub struct AnimatedSprites(pub HashMap<String, Vec<Image>>);

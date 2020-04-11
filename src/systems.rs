@@ -126,6 +126,94 @@ impl<'a> System<'a> for SpawnBulletSys {
     }
 }
 
+pub struct HPKillSys;
+impl<'a> System<'a> for HPKillSys {
+    type SystemData = (ReadStorage<'a, HP>, Entities<'a>);
+
+    fn run(&mut self, (hp_storage, entities): Self::SystemData) {
+        (&hp_storage, &entities)
+            .par_join()
+            .for_each(|(hp, entity)| {
+                if hp.0 == 0 {
+                    entities.delete(entity).unwrap();
+                }
+            });
+    }
+}
+
+pub struct BulletCollSys;
+impl<'a> System<'a> for BulletCollSys {
+    type SystemData = (
+        ReadStorage<'a, Enemy>,
+        ReadStorage<'a, Bullet>,
+        WriteStorage<'a, HP>,
+        WriteStorage<'a, Position>,
+        WriteStorage<'a, AnimatedSprite>,
+        Entities<'a>,
+        Read<'a, AnimatedSprites>,
+    );
+
+    fn run(
+        &mut self,
+        (
+            enemies,
+            bullets,
+            mut hp_storage,
+            mut positions,
+            mut animated_sprite_storage,
+            entities,
+            animated_sprites,
+        ): Self::SystemData,
+    ) {
+        let mut explosion_positions: Vec<Point> = Vec::new();
+
+        (&bullets, &positions, &entities)
+            .join()
+            .for_each(|(bullet, pos, bullet_entity)| {
+                if pos.0.y <= -20.0 {
+                    entities.delete(bullet_entity).unwrap();
+                } else {
+                    (&enemies, &mut hp_storage, &positions).join().for_each(
+                        |(_enemy, enemy_hp, enemy_pos)| {
+                            //  _____
+                            // |     |
+                            // |_____| <-- enemy
+                            //  ---* <-- bullet
+                            //   ^
+                            //   |
+                            // x_diff
+                            let x_diff = pos.0.x - enemy_pos.0.x;
+                            let y_diff = enemy_pos.0.y - pos.0.y;
+                            if enemy_hp.0 > 0
+                                && (-5.0..50.0).contains(&x_diff)
+                                && (-5.0..5.0).contains(&y_diff)
+                            {
+                                enemy_hp.0 -= bullet.damage;
+                                explosion_positions.push(pos.0);
+                                entities.delete(bullet_entity).unwrap();
+                            }
+                        },
+                    );
+                }
+            });
+
+        explosion_positions.iter().for_each(|pos| {
+            entities
+                .build_entity()
+                .with(Position(*pos), &mut positions)
+                .with(
+                    AnimatedSprite {
+                        frames: animated_sprites.0.get("explosion").unwrap().to_vec(),
+                        current_frame: 0,
+                        temporary: true,
+                    },
+                    &mut animated_sprite_storage,
+                )
+                .build();
+        });
+    }
+}
+
 pub struct ReloadTimerSys;
 impl<'a> System<'a> for ReloadTimerSys {
     type SystemData = (WriteStorage<'a, Player>, Read<'a, PlayerEntity>);
@@ -136,5 +224,29 @@ impl<'a> System<'a> for ReloadTimerSys {
         if player_data.reload_timer != 0 {
             player_data.reload_timer -= 1;
         }
+    }
+}
+
+pub struct AnimationSys;
+impl<'a> System<'a> for AnimationSys {
+    type SystemData = (WriteStorage<'a, AnimatedSprite>, Entities<'a>);
+
+    fn run(&mut self, (mut animated_sprite_storage, entities): Self::SystemData) {
+        use std::convert::TryInto;
+
+        (&mut animated_sprite_storage, &entities)
+            .join()
+            .for_each(|(animated_sprite, entity)| {
+                animated_sprite.current_frame += 1;
+                assert!(animated_sprite.frames.len() < 256);
+                if animated_sprite.current_frame == animated_sprite.frames.len().try_into().unwrap()
+                {
+                    if animated_sprite.temporary {
+                        entities.delete(entity).unwrap();
+                    } else {
+                        animated_sprite.current_frame = 0;
+                    }
+                }
+            })
     }
 }

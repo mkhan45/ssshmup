@@ -32,6 +32,7 @@ fn main() -> GameResult {
     world.register::<components::Enemy>();
     world.register::<components::Bullet>();
     world.register::<components::Sprite>();
+    world.register::<components::AnimatedSprite>();
 
     world.insert(components::StarInfo {
         num_stars: 150,
@@ -48,6 +49,7 @@ fn main() -> GameResult {
     world.insert(PlayerEntity(player));
 
     let mut sprites = HashMap::new();
+    let mut animated_sprites = HashMap::new();
     {
         use ggez::graphics::{FilterMode, Image};
         let enemy1_image = Image::new(ctx, "/ufo1.png");
@@ -58,22 +60,48 @@ fn main() -> GameResult {
         sprites
             .iter_mut()
             .for_each(|(_, image)| image.set_filter(FilterMode::Nearest));
+
+        let explosion: Vec<Image> = (1..12)
+            .map(|i| {
+                let mut img = Image::new(ctx, format!("/explosion/explosion{:02}.png", i)).unwrap();
+                img.set_filter(FilterMode::Nearest);
+                img
+            })
+            .collect();
+
+        animated_sprites.insert("explosion".to_string(), explosion);
     }
     world.insert(components::BulletSpriteBatch(SpriteBatch::new(
         sprites.get("bullet1").unwrap().clone(),
     )));
     world.insert(components::Sprites(sprites));
+    world.insert(components::AnimatedSprites(animated_sprites));
 
-    let enemy = components::new_enemy(
-        components::Enemy::BasicEnemy,
-        [SCREEN_WIDTH / 2.0, 100.0].into(),
-    );
-    components::create_enemy(&mut world, &enemy);
+    (0..10).for_each(|i| {
+        let enemy = components::new_enemy(
+            components::Enemy::BasicEnemy,
+            [i as f32 * 60.0, 100.0].into(),
+        );
+        components::create_enemy(&mut world, &enemy);
+
+        let enemy = components::new_enemy(
+            components::Enemy::BasicEnemy,
+            [i as f32 * 60.0, 200.0].into(),
+        );
+        components::create_enemy(&mut world, &enemy);
+    });
 
     let mut dispatcher = DispatcherBuilder::new()
         .with(systems::IntegrateSys, "integrate_system", &[])
         .with(systems::StarMoveSys, "star_system", &[])
         .with(systems::ReloadTimerSys, "reload_timer_sys", &[])
+        .with(systems::AnimationSys, "animation_sys", &[])
+        .with(
+            systems::BulletCollSys,
+            "bullet_col_sys",
+            &["integrate_system"],
+        )
+        .with(systems::HPKillSys, "hp_kill_sys", &["bullet_col_sys"])
         .build();
 
     dispatcher.setup(&mut world);

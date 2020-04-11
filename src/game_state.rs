@@ -25,9 +25,13 @@ impl<'a, 'b> GameState<'a, 'b> {
 
 impl EventHandler for GameState<'_, '_> {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
-        self.world.maintain();
         if ggez::timer::ticks(&ctx) % 120 == 0 {
             dbg!(ggez::timer::fps(&ctx));
+        }
+
+        // for stuff to load in
+        if ggez::timer::ticks(&ctx) < 30 {
+            return Ok(());
         }
 
         if input::keyboard::is_key_pressed(ctx, KeyCode::Space) {
@@ -56,7 +60,7 @@ impl EventHandler for GameState<'_, '_> {
         }
 
         self.dispatcher.dispatch_par(&self.world);
-
+        self.world.maintain();
         Ok(())
     }
 
@@ -68,6 +72,7 @@ impl EventHandler for GameState<'_, '_> {
         let sprites = self.world.read_storage::<Sprite>();
         let bullets = self.world.read_storage::<Bullet>();
         let stars = self.world.read_storage::<Star>();
+        let animated_sprite_storage = self.world.read_storage::<AnimatedSprite>();
         let mut bullet_spritebatch = self.world.fetch_mut::<BulletSpriteBatch>();
 
         let mut builder = MeshBuilder::new();
@@ -99,6 +104,18 @@ impl EventHandler for GameState<'_, '_> {
                 .0
                 .add(DrawParam::new().scale([3.0, 3.0]).dest(pos.0));
         });
+
+        (&positions, &animated_sprite_storage)
+            .join()
+            .for_each(|(pos, animated_sprite)| {
+                graphics::draw(
+                    ctx,
+                    &animated_sprite.frames[animated_sprite.current_frame as usize],
+                    graphics::DrawParam::new().scale([3.0, 3.0]).dest(pos.0),
+                )
+                .unwrap();
+            });
+
         graphics::draw(ctx, &bullet_spritebatch.0, graphics::DrawParam::new())?;
         bullet_spritebatch.0.clear();
 
