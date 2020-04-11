@@ -1,5 +1,5 @@
 use components::PlayerEntity;
-use ggez::{event, GameResult};
+use ggez::{event, graphics::spritebatch::SpriteBatch, GameResult};
 use specs::prelude::*;
 
 use std::collections::HashMap;
@@ -59,6 +59,9 @@ fn main() -> GameResult {
             .iter_mut()
             .for_each(|(_, image)| image.set_filter(FilterMode::Nearest));
     }
+    world.insert(components::BulletSpriteBatch(SpriteBatch::new(
+        sprites.get("bullet1").unwrap().clone(),
+    )));
     world.insert(components::Sprites(sprites));
 
     let enemy = components::new_enemy(

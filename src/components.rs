@@ -1,4 +1,4 @@
-use ggez::graphics::{Color, Image, spritebatch::SpriteBatch};
+use ggez::graphics::{spritebatch::SpriteBatch, Color, Image};
 use ggez::nalgebra::{Point2, Vector2};
 
 use specs::prelude::*;
@@ -58,8 +58,8 @@ pub struct Bullet {
 
 pub type BulletTuple = (Position, Velocity, Bullet);
 pub fn new_bullet(ty: BulletType, pos: Point, start_vel: Vector) -> BulletTuple {
-    let (damage, speed, w, h, color) = match ty {
-        BulletType::BasicBullet => (1, -8.0, 5.0, 10.0, Color::new(0.0, 1.0, 1.0, 1.0)),
+    let (damage, speed) = match ty {
+        BulletType::BasicBullet => (1, 8.0),
     };
 
     let bullet = Bullet { damage, ty };
@@ -67,7 +67,7 @@ pub fn new_bullet(ty: BulletType, pos: Point, start_vel: Vector) -> BulletTuple 
     let pos: Point = [pos.x, pos.y - 16.0].into();
     (
         Position(pos),
-        Velocity([0.0, speed + start_vel.y.min(0.0)].into()),
+        Velocity([0.0, -speed + start_vel.y.min(0.0)].into()),
         bullet,
     )
 }
@@ -209,5 +209,5 @@ pub struct Star;
 #[derive(Clone, Default)]
 pub struct Sprites(pub HashMap<String, Image>);
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct BulletSpriteBatch(pub SpriteBatch);

@@ -66,7 +66,9 @@ impl EventHandler for GameState<'_, '_> {
         let positions = self.world.read_storage::<Position>();
         let colorects = self.world.read_storage::<ColorRect>();
         let sprites = self.world.read_storage::<Sprite>();
+        let bullets = self.world.read_storage::<Bullet>();
         let stars = self.world.read_storage::<Star>();
+        let mut bullet_spritebatch = self.world.fetch_mut::<BulletSpriteBatch>();
 
         let mut builder = MeshBuilder::new();
         (&positions, &colorects, &stars)
@@ -81,14 +83,24 @@ impl EventHandler for GameState<'_, '_> {
                 draw_colorect(&mut builder, (*pos).into(), &colorect);
             });
 
-        (&positions, &sprites).join().for_each(|(pos, sprite)| {
-            graphics::draw(
-                ctx,
-                &sprite.0,
-                graphics::DrawParam::new().scale([3.0, 3.0]).dest(pos.0),
-            )
-            .unwrap()
+        (&positions, &sprites, !&bullets)
+            .join()
+            .for_each(|(pos, sprite, _)| {
+                graphics::draw(
+                    ctx,
+                    &sprite.0,
+                    graphics::DrawParam::new().scale([3.0, 3.0]).dest(pos.0),
+                )
+                .unwrap()
+            });
+
+        (&positions, &bullets).join().for_each(|(pos, _)| {
+            bullet_spritebatch
+                .0
+                .add(DrawParam::new().scale([3.0, 3.0]).dest(pos.0));
         });
+        graphics::draw(ctx, &bullet_spritebatch.0, graphics::DrawParam::new())?;
+        bullet_spritebatch.0.clear();
 
         let mesh = builder.build(ctx)?;
         graphics::draw(ctx, &mesh, DrawParam::new())?;
