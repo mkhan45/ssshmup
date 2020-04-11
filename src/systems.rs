@@ -1,5 +1,6 @@
 #![allow(clippy::type_complexity)]
 use crate::components::*;
+use ggez::graphics::Rect;
 use specs::prelude::*;
 
 pub struct IntegrateSys;
@@ -30,7 +31,8 @@ impl<'a> System<'a> for StarInitSys {
         (entities, mut stars, mut positions, mut vels, mut colorects, star_info): Self::SystemData,
     ) {
         (0..star_info.num_stars).for_each(|_| {
-            let star = star_info.new_star();
+            let mut star = star_info.new_star();
+            (star.0).0.y += crate::SCREEN_HEIGHT * 0.9;
 
             entities
                 .build_entity()
@@ -104,7 +106,7 @@ impl<'a> System<'a> for SpawnBulletSys {
         if player_data.reload_timer == 0 {
             player_data.reload_timer = player_data.reload_speed;
             let player_pos = positions.get(player_entity.0).unwrap().0;
-            let bullet = new_bullet(player_data.bullet_type, player_pos, player_vel);
+            let bullet = new_bullet(player_data.bullet_type, player_pos, player_vel, true);
             let sprite = {
                 sprites
                     .0
@@ -144,25 +146,27 @@ impl<'a> System<'a> for HPKillSys {
 pub struct BulletCollSys;
 impl<'a> System<'a> for BulletCollSys {
     type SystemData = (
-        ReadStorage<'a, Enemy>,
         ReadStorage<'a, Bullet>,
+        ReadStorage<'a, Hitbox>,
         WriteStorage<'a, HP>,
         WriteStorage<'a, Position>,
         WriteStorage<'a, AnimatedSprite>,
         Entities<'a>,
         Read<'a, AnimatedSprites>,
+        Read<'a, PlayerEntity>,
     );
 
     fn run(
         &mut self,
         (
-            enemies,
             bullets,
+            hitboxes,
             mut hp_storage,
             mut positions,
             mut animated_sprite_storage,
             entities,
             animated_sprites,
+            player_entity,
         ): Self::SystemData,
     ) {
         let mut explosion_positions: Vec<Point> = Vec::new();
@@ -173,27 +177,24 @@ impl<'a> System<'a> for BulletCollSys {
                 if pos.0.y <= -20.0 {
                     entities.delete(bullet_entity).unwrap();
                 } else {
-                    (&enemies, &mut hp_storage, &positions).join().for_each(
-                        |(_enemy, enemy_hp, enemy_pos)| {
-                            //  _____
-                            // |     |
-                            // |_____| <-- enemy
-                            //  ---* <-- bullet
-                            //   ^
-                            //   |
-                            // x_diff
-                            let x_diff = pos.0.x - enemy_pos.0.x;
-                            let y_diff = enemy_pos.0.y - pos.0.y;
-                            if enemy_hp.0 > 0
-                                && (-5.0..50.0).contains(&x_diff)
-                                && (-5.0..5.0).contains(&y_diff)
-                            {
-                                enemy_hp.0 -= bullet.damage;
-                                explosion_positions.push(pos.0);
-                                entities.delete(bullet_entity).unwrap();
+                    (&mut hp_storage, &positions, &hitboxes, &entities)
+                        .join()
+                        .for_each(|(hp, collided_pos, hitbox, entity)| {
+                            if (!bullet.friendly || entity != player_entity.0) && hp.0 > 0 {
+                                let bullet_rect = Rect::new(pos.0.x, pos.0.y, 5.0, 5.0);
+                                let collidee_rect = Rect::new(
+                                    collided_pos.0.x,
+                                    collided_pos.0.y,
+                                    hitbox.0,
+                                    hitbox.1,
+                                );
+                                if bullet_rect.overlaps(&collidee_rect) {
+                                    hp.0 -= bullet.damage;
+                                    explosion_positions.push(pos.0);
+                                    entities.delete(bullet_entity).unwrap();
+                                }
                             }
-                        },
-                    );
+                        });
                 }
             });
 
@@ -249,4 +250,10 @@ impl<'a> System<'a> for AnimationSys {
                 }
             })
     }
+}
+
+pub struct PlayerColSys;
+impl<'a> System<'a> for PlayerColSys {
+    type SystemData = (WriteStorage<'a, AnimatedSprite>, Entities<'a>);
+    fn run(&mut self, (mut animated_sprite_storage, entities): Self::SystemData) {}
 }

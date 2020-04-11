@@ -1,4 +1,4 @@
-use ggez::graphics::{spritebatch::SpriteBatch, Color, Image};
+use ggez::graphics::{spritebatch::SpriteBatch, Color, Image, Rect};
 use ggez::nalgebra::{Point2, Vector2};
 
 use specs::prelude::*;
@@ -65,16 +65,21 @@ pub enum BulletType {
 #[storage(VecStorage)]
 pub struct Bullet {
     pub damage: u32,
+    pub friendly: bool,
     pub ty: BulletType,
 }
 
 pub type BulletTuple = (Position, Velocity, Bullet);
-pub fn new_bullet(ty: BulletType, pos: Point, start_vel: Vector) -> BulletTuple {
+pub fn new_bullet(ty: BulletType, pos: Point, start_vel: Vector, friendly: bool) -> BulletTuple {
     let (damage, speed) = match ty {
         BulletType::BasicBullet => (1, 8.0),
     };
 
-    let bullet = Bullet { damage, ty };
+    let bullet = Bullet {
+        damage,
+        ty,
+        friendly,
+    };
 
     let pos: Point = [pos.x, pos.y - 16.0].into();
     (
@@ -90,15 +95,15 @@ pub enum Enemy {
     BasicEnemy,
 }
 
-pub type EnemyTuple = (Position, Velocity, Enemy, HP);
+pub type EnemyTuple = (Position, Velocity, Enemy, HP, Hitbox);
 pub fn new_enemy(enemy_type: Enemy, pos: Point) -> EnemyTuple {
     let pos = Position(pos);
     let vel = Velocity::default();
-    let hp = match enemy_type {
-        Enemy::BasicEnemy => 1,
+    let (hp, size) = match enemy_type {
+        Enemy::BasicEnemy => (1, (55.0, 55.0)),
     };
 
-    (pos, vel, enemy_type, HP(hp))
+    (pos, vel, enemy_type, HP(hp), Hitbox(size.0, size.1))
 }
 
 pub fn create_enemy(world: &mut World, enemy: &EnemyTuple) -> Entity {
@@ -118,6 +123,7 @@ pub fn create_enemy(world: &mut World, enemy: &EnemyTuple) -> Entity {
         .with(enemy.1)
         .with(enemy.2)
         .with(enemy.3)
+        .with(enemy.4)
         .with(Sprite(sprite))
         .build()
 }
@@ -149,7 +155,7 @@ impl Default for PlayerEntity {
     }
 }
 
-pub type PlayerTuple = (Position, Velocity, HP, Sprite, Player);
+pub type PlayerTuple = (Position, Velocity, HP, Sprite, Player, Hitbox);
 pub fn new_player(sprite: Image, hp: u32) -> PlayerTuple {
     let pos = Position(
         [
@@ -161,7 +167,14 @@ pub fn new_player(sprite: Image, hp: u32) -> PlayerTuple {
     let vel = Velocity::default();
     let hp = HP(hp);
 
-    (pos, vel, hp, Sprite(sprite), Player::default())
+    (
+        pos,
+        vel,
+        hp,
+        Sprite(sprite),
+        Player::default(),
+        Hitbox(45.0, 45.0),
+    )
 }
 
 pub fn create_player(world: &mut World, player: PlayerTuple) -> Entity {
@@ -172,6 +185,7 @@ pub fn create_player(world: &mut World, player: PlayerTuple) -> Entity {
         .with(player.2)
         .with(player.3)
         .with(player.4)
+        .with(player.5)
         .build()
 }
 
@@ -212,6 +226,10 @@ impl StarInfo {
 #[derive(Clone, Copy, Debug, PartialEq, Component, Default)]
 #[storage(NullStorage)]
 pub struct Star;
+
+#[derive(Clone, Copy, Debug, PartialEq, Component, Default)]
+#[storage(VecStorage)]
+pub struct Hitbox(pub f32, pub f32);
 
 #[derive(Clone, Default)]
 pub struct Sprites(pub HashMap<String, Image>);

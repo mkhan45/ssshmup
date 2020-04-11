@@ -120,7 +120,7 @@ impl EventHandler for GameState<'_, '_> {
                 graphics::draw(
                     ctx,
                     &animated_sprite.frames[animated_sprite.current_frame as usize],
-                    graphics::DrawParam::new().scale([3.0, 3.0]).dest(pos.0),
+                    graphics::DrawParam::new().scale([3.5, 3.5]).dest(pos.0),
                 )
                 .unwrap();
             });

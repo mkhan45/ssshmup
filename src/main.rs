@@ -33,6 +33,7 @@ fn main() -> GameResult {
     world.register::<components::Bullet>();
     world.register::<components::Sprite>();
     world.register::<components::AnimatedSprite>();
+    world.register::<components::Hitbox>();
 
     world.insert(components::StarInfo {
         num_stars: 150,
