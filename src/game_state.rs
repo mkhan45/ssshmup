@@ -40,23 +40,32 @@ impl EventHandler for GameState<'_, '_> {
         }
 
         {
-            let mut velocities = self.world.write_storage::<Velocity>();
-            let player_vel = &mut velocities
-                .get_mut(self.world.fetch::<PlayerEntity>().0)
-                .unwrap();
-            player_vel.0 /= 1.45;
-            if input::keyboard::is_key_pressed(ctx, KeyCode::W) {
-                player_vel.0.y -= 1.5;
+            let player_entity = self.world.fetch::<PlayerEntity>().0;
+            let velocities = &mut self.world.write_storage::<Velocity>();
+            let positions = &mut self.world.write_storage::<Position>();
+            let player_vel = &mut velocities.get_mut(player_entity).unwrap().0;
+            let player_pos = &mut positions.get_mut(player_entity).unwrap().0;
+
+            *player_vel /= 1.45;
+            if input::keyboard::is_key_pressed(ctx, KeyCode::W) && player_pos.y > 0.0 {
+                player_vel.y -= 1.5;
             }
-            if input::keyboard::is_key_pressed(ctx, KeyCode::S) {
-                player_vel.0.y += 1.5;
+            if input::keyboard::is_key_pressed(ctx, KeyCode::S)
+                && player_pos.y < crate::SCREEN_HEIGHT - 45.0
+            {
+                player_vel.y += 1.5;
             }
-            if input::keyboard::is_key_pressed(ctx, KeyCode::A) {
-                player_vel.0.x -= 1.5;
+            if input::keyboard::is_key_pressed(ctx, KeyCode::A) && player_pos.x > 0.0 {
+                player_vel.x -= 1.5;
             }
-            if input::keyboard::is_key_pressed(ctx, KeyCode::D) {
-                player_vel.0.x += 1.5;
+            if input::keyboard::is_key_pressed(ctx, KeyCode::D)
+                && player_pos.x < crate::SCREEN_WIDTH - 45.0
+            {
+                player_vel.x += 1.5;
             }
+
+            player_pos.y = player_pos.y.min(crate::SCREEN_HEIGHT - 45.0).max(0.0);
+            player_pos.x = player_pos.x.min(crate::SCREEN_WIDTH - 45.0).max(0.0);
         }
 
         self.dispatcher.dispatch_par(&self.world);
