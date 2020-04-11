@@ -1,5 +1,5 @@
+#![allow(clippy::type_complexity)]
 use crate::components::*;
-use ggez::Context;
 use specs::prelude::*;
 
 pub struct IntegrateSys;
@@ -80,8 +80,10 @@ impl<'a> System<'a> for SpawnBulletSys {
         WriteStorage<'a, Velocity>,
         WriteStorage<'a, ColorRect>,
         WriteStorage<'a, Bullet>,
+        WriteStorage<'a, Sprite>,
         Entities<'a>,
         Read<'a, PlayerEntity>,
+        Read<'a, Sprites>,
     );
 
     fn run(
@@ -92,8 +94,10 @@ impl<'a> System<'a> for SpawnBulletSys {
             mut vels,
             mut color_rects,
             mut bullets,
+            mut sprite_res,
             entities,
             player_entity,
+            sprites,
         ): Self::SystemData,
     ) {
         let player_data = &mut players.get_mut(player_entity.0).unwrap();
@@ -103,12 +107,22 @@ impl<'a> System<'a> for SpawnBulletSys {
             player_data.reload_timer = player_data.reload_speed;
             let player_pos = positions.get(player_entity.0).unwrap().0;
             let bullet = new_bullet(player_data.bullet_type, player_pos, player_vel);
+            let sprite = {
+                sprites
+                    .0
+                    .get(match player_data.bullet_type {
+                        BulletType::BasicBullet => "bullet1",
+                    })
+                    .unwrap()
+                    .clone()
+            };
+
             entities
                 .build_entity()
                 .with(bullet.0, &mut positions)
                 .with(bullet.1, &mut vels)
-                .with(bullet.2, &mut color_rects)
-                .with(bullet.3, &mut bullets)
+                .with(bullet.2, &mut bullets)
+                .with(Sprite(sprite), &mut sprite_res)
                 .build();
         }
     }

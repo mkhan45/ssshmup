@@ -18,7 +18,7 @@ impl<'a, 'b> GameState<'a, 'b> {
     pub fn new(mut world: World, dispatcher: Dispatcher<'a, 'b>) -> Self {
         let mut init_star_sys = systems::StarInitSys::default();
         specs::RunNow::setup(&mut init_star_sys, &mut world);
-        init_star_sys.run_now(&mut world);
+        init_star_sys.run_now(&world);
         GameState { world, dispatcher }
     }
 }
@@ -32,7 +32,7 @@ impl EventHandler for GameState<'_, '_> {
 
         if input::keyboard::is_key_pressed(ctx, KeyCode::Space) {
             let mut spawn_sys = systems::SpawnBulletSys::default();
-            spawn_sys.run_now(&mut self.world);
+            spawn_sys.run_now(&self.world);
         }
 
         {
@@ -42,20 +42,20 @@ impl EventHandler for GameState<'_, '_> {
                 .unwrap();
             player_vel.0 /= 1.45;
             if input::keyboard::is_key_pressed(ctx, KeyCode::W) {
-                player_vel.0.y -= 3.0;
+                player_vel.0.y -= 1.5;
             }
             if input::keyboard::is_key_pressed(ctx, KeyCode::S) {
-                player_vel.0.y += 3.0;
+                player_vel.0.y += 1.5;
             }
             if input::keyboard::is_key_pressed(ctx, KeyCode::A) {
-                player_vel.0.x -= 3.0;
+                player_vel.0.x -= 1.5;
             }
             if input::keyboard::is_key_pressed(ctx, KeyCode::D) {
-                player_vel.0.x += 3.0;
+                player_vel.0.x += 1.5;
             }
         }
 
-        self.dispatcher.dispatch(&mut self.world);
+        self.dispatcher.dispatch_par(&self.world);
 
         Ok(())
     }
@@ -65,6 +65,7 @@ impl EventHandler for GameState<'_, '_> {
 
         let positions = self.world.read_storage::<Position>();
         let colorects = self.world.read_storage::<ColorRect>();
+        let sprites = self.world.read_storage::<Sprite>();
         let stars = self.world.read_storage::<Star>();
 
         let mut builder = MeshBuilder::new();
@@ -79,6 +80,15 @@ impl EventHandler for GameState<'_, '_> {
             .for_each(|(pos, colorect, _)| {
                 draw_colorect(&mut builder, (*pos).into(), &colorect);
             });
+
+        (&positions, &sprites).join().for_each(|(pos, sprite)| {
+            graphics::draw(
+                ctx,
+                &sprite.0,
+                graphics::DrawParam::new().scale([3.0, 3.0]).dest(pos.0),
+            )
+            .unwrap()
+        });
 
         let mesh = builder.build(ctx)?;
         graphics::draw(ctx, &mesh, DrawParam::new())?;

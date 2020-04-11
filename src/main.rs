@@ -2,6 +2,8 @@ use components::PlayerEntity;
 use ggez::{event, GameResult};
 use specs::prelude::*;
 
+use std::collections::HashMap;
+
 mod components;
 mod game_state;
 mod systems;
@@ -29,6 +31,7 @@ fn main() -> GameResult {
     world.register::<components::HP>();
     world.register::<components::Enemy>();
     world.register::<components::Bullet>();
+    world.register::<components::Sprite>();
 
     world.insert(components::StarInfo {
         num_stars: 150,
@@ -38,9 +41,25 @@ fn main() -> GameResult {
         vel_variance: 2.0,
     });
 
-    let player = components::new_player(3);
-    let player = components::create_player(&mut world, &player);
+    let mut player_sprite = ggez::graphics::Image::new(ctx, "/player.png").unwrap();
+    player_sprite.set_filter(ggez::graphics::FilterMode::Nearest);
+    let player = components::new_player(player_sprite, 3);
+    let player = components::create_player(&mut world, player);
     world.insert(PlayerEntity(player));
+
+    let mut sprites = HashMap::new();
+    {
+        use ggez::graphics::{FilterMode, Image};
+        let enemy1_image = Image::new(ctx, "/ufo1.png");
+        let bullet1_image = Image::new(ctx, "/bullet1.png");
+
+        sprites.insert("enemy1".to_string(), enemy1_image.unwrap());
+        sprites.insert("bullet1".to_string(), bullet1_image.unwrap());
+        sprites
+            .iter_mut()
+            .for_each(|(_, image)| image.set_filter(FilterMode::Nearest));
+    }
+    world.insert(components::Sprites(sprites));
 
     let enemy = components::new_enemy(
         components::Enemy::BasicEnemy,

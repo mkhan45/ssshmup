@@ -1,10 +1,10 @@
-use ggez::graphics::Color;
+use ggez::graphics::{Color, Image, spritebatch::SpriteBatch};
 use ggez::nalgebra::{Point2, Vector2};
 
 use specs::prelude::*;
 use specs::Component;
 
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 pub type Point = Point2<f32>;
 pub type Vector = Vector2<f32>;
@@ -28,9 +28,9 @@ impl Default for Velocity {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Component)]
+#[derive(Clone, Debug, PartialEq, Component)]
 #[storage(VecStorage)]
-pub struct Sprite;
+pub struct Sprite(pub Image);
 
 #[derive(Clone, Copy, Debug, PartialEq, Component)]
 #[storage(VecStorage)]
@@ -56,7 +56,7 @@ pub struct Bullet {
     pub ty: BulletType,
 }
 
-pub type BulletTuple = (Position, Velocity, ColorRect, Bullet);
+pub type BulletTuple = (Position, Velocity, Bullet);
 pub fn new_bullet(ty: BulletType, pos: Point, start_vel: Vector) -> BulletTuple {
     let (damage, speed, w, h, color) = match ty {
         BulletType::BasicBullet => (1, -8.0, 5.0, 10.0, Color::new(0.0, 1.0, 1.0, 1.0)),
@@ -64,13 +64,10 @@ pub fn new_bullet(ty: BulletType, pos: Point, start_vel: Vector) -> BulletTuple 
 
     let bullet = Bullet { damage, ty };
 
-    let colorect = ColorRect { color, w, h };
-
-    let pos: Point = [pos.x + 25.0, pos.y].into();
+    let pos: Point = [pos.x, pos.y - 16.0].into();
     (
         Position(pos),
         Velocity([0.0, speed + start_vel.y.min(0.0)].into()),
-        colorect,
         bullet,
     )
 }
@@ -81,32 +78,35 @@ pub enum Enemy {
     BasicEnemy,
 }
 
-pub type EnemyTuple = (Position, Velocity, ColorRect, Enemy, HP);
+pub type EnemyTuple = (Position, Velocity, Enemy, HP);
 pub fn new_enemy(enemy_type: Enemy, pos: Point) -> EnemyTuple {
     let pos = Position(pos);
     let vel = Velocity::default();
-    let (color_rect, hp) = match enemy_type {
-        Enemy::BasicEnemy => (
-            ColorRect {
-                color: Color::new(1.0, 0.0, 0.0, 1.0),
-                w: 30.0,
-                h: 30.0,
-            },
-            1,
-        ),
+    let hp = match enemy_type {
+        Enemy::BasicEnemy => 1,
     };
 
-    (pos, vel, color_rect, enemy_type, HP(hp))
+    (pos, vel, enemy_type, HP(hp))
 }
 
 pub fn create_enemy(world: &mut World, enemy: &EnemyTuple) -> Entity {
+    let sprite = {
+        let sprites = &world.fetch::<Sprites>().0;
+        sprites
+            .get(match enemy.2 {
+                Enemy::BasicEnemy => "enemy1",
+            })
+            .unwrap()
+            .clone()
+    };
+
     world
         .create_entity()
         .with(enemy.0)
         .with(enemy.1)
         .with(enemy.2)
         .with(enemy.3)
-        .with(enemy.4)
+        .with(Sprite(sprite))
         .build()
 }
 
@@ -137,8 +137,8 @@ impl Default for PlayerEntity {
     }
 }
 
-pub type PlayerTuple = (Position, Velocity, HP, ColorRect, Player);
-pub fn new_player(hp: u32) -> PlayerTuple {
+pub type PlayerTuple = (Position, Velocity, HP, Sprite, Player);
+pub fn new_player(sprite: Image, hp: u32) -> PlayerTuple {
     let pos = Position(
         [
             crate::SCREEN_WIDTH / 2.0 - 25.0,
@@ -148,16 +148,16 @@ pub fn new_player(hp: u32) -> PlayerTuple {
     );
     let vel = Velocity::default();
     let hp = HP(hp);
-    let rect = ColorRect {
-        color: Color::new(1.0, 1.0, 1.0, 1.0),
-        w: 50.0,
-        h: 80.0,
-    };
+    // let rect = ColorRect {
+    //     color: Color::new(1.0, 1.0, 1.0, 1.0),
+    //     w: 50.0,
+    //     h: 80.0,
+    // };
 
-    (pos, vel, hp, rect, Player::default())
+    (pos, vel, hp, Sprite(sprite), Player::default())
 }
 
-pub fn create_player(world: &mut World, player: &PlayerTuple) -> Entity {
+pub fn create_player(world: &mut World, player: PlayerTuple) -> Entity {
     world
         .create_entity()
         .with(player.0)
@@ -205,3 +205,9 @@ impl StarInfo {
 #[derive(Clone, Copy, Debug, PartialEq, Component, Default)]
 #[storage(NullStorage)]
 pub struct Star;
+
+#[derive(Clone, Default)]
+pub struct Sprites(pub HashMap<String, Image>);
+
+#[derive(Clone, Default)]
+pub struct BulletSpriteBatch(pub SpriteBatch);
