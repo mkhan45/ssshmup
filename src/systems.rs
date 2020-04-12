@@ -106,7 +106,8 @@ impl<'a> System<'a> for SpawnBulletSys {
         if player_data.reload_timer == 0 {
             player_data.reload_timer = player_data.reload_speed;
             let player_pos = positions.get(player_entity.0).unwrap().0;
-            let bullet = new_bullet(player_data.bullet_type, player_pos, player_vel, true);
+            let bullet_pos: Point = player_pos + Vector::new(18.0, 5.0);
+            let bullet = new_bullet(player_data.bullet_type, bullet_pos, player_vel, true);
             let sprite = {
                 sprites
                     .0
@@ -130,14 +131,18 @@ impl<'a> System<'a> for SpawnBulletSys {
 
 pub struct HPKillSys;
 impl<'a> System<'a> for HPKillSys {
-    type SystemData = (ReadStorage<'a, HP>, Entities<'a>);
+    type SystemData = (ReadStorage<'a, HP>, Entities<'a>, Read<'a, PlayerEntity>);
 
-    fn run(&mut self, (hp_storage, entities): Self::SystemData) {
+    fn run(&mut self, (hp_storage, entities, player_entity): Self::SystemData) {
         (&hp_storage, &entities)
             .par_join()
             .for_each(|(hp, entity)| {
                 if hp.0 == 0 {
                     entities.delete(entity).unwrap();
+                    if entity == player_entity.0 {
+                        println!("Player died");
+                        std::process::exit(0);
+                    }
                 }
             });
     }
@@ -174,6 +179,7 @@ impl<'a> System<'a> for BulletCollSys {
         (&bullets, &positions, &entities)
             .join()
             .for_each(|(bullet, pos, bullet_entity)| {
+                let bullet_rect = Rect::new(pos.0.x, pos.0.y, 5.0, 5.0);
                 if pos.0.y <= -20.0 {
                     entities.delete(bullet_entity).unwrap();
                 } else {
@@ -181,7 +187,6 @@ impl<'a> System<'a> for BulletCollSys {
                         .join()
                         .for_each(|(hp, collided_pos, hitbox, entity)| {
                             if (!bullet.friendly || entity != player_entity.0) && hp.0 > 0 {
-                                let bullet_rect = Rect::new(pos.0.x, pos.0.y, 5.0, 5.0);
                                 let collidee_rect = Rect::new(
                                     collided_pos.0.x,
                                     collided_pos.0.y,
@@ -252,8 +257,46 @@ impl<'a> System<'a> for AnimationSys {
     }
 }
 
-pub struct PlayerColSys;
-impl<'a> System<'a> for PlayerColSys {
-    type SystemData = (WriteStorage<'a, AnimatedSprite>, Entities<'a>);
-    fn run(&mut self, (mut animated_sprite_storage, entities): Self::SystemData) {}
+pub struct PlayerCollSys;
+impl<'a> System<'a> for PlayerCollSys {
+    type SystemData = (
+        WriteStorage<'a, HP>,
+        ReadStorage<'a, Position>,
+        ReadStorage<'a, Hitbox>,
+        ReadStorage<'a, Bullet>,
+        ReadStorage<'a, Enemy>,
+        Entities<'a>,
+        Read<'a, PlayerEntity>,
+    );
+
+    fn run(
+        &mut self,
+        (mut hp_storage, positions, hitboxes, bullets, enemies, entities, player_entity): Self::SystemData,
+    ) {
+        let player_pos = positions.get(player_entity.0).unwrap().0;
+        let player_hitbox = hitboxes.get(player_entity.0).unwrap();
+        let mut player_hp = hp_storage.get(player_entity.0).unwrap().0;
+
+        let player_rect = Rect::new(player_pos.x, player_pos.y, player_hitbox.0, player_hitbox.1);
+        (&mut hp_storage, &positions, &hitboxes, &entities, !&bullets)
+            .join()
+            .for_each(|(mut other_hp, pos, hbox, entity, _)| {
+                if entity == player_entity.0 {
+                    return;
+                }
+
+                let other_rect = Rect::new(pos.0.x, pos.0.y, hbox.0, hbox.1);
+                if other_rect.overlaps(&player_rect) {
+                    if let Some(enemy) = enemies.get(entity) {
+                        let damage_to_player = match enemy {
+                            Enemy::BasicEnemy => 1,
+                        };
+                        player_hp = (player_hp as i16 - damage_to_player).max(0) as u32;
+                    }
+                    other_hp.0 = (other_hp.0 as i16 - 3).max(0) as u32;
+                }
+            });
+
+        hp_storage.get_mut(player_entity.0).unwrap().0 = player_hp;
+    }
 }

@@ -78,6 +78,7 @@ impl EventHandler for GameState<'_, '_> {
 
         let positions = self.world.read_storage::<Position>();
         let colorects = self.world.read_storage::<ColorRect>();
+        let hitboxes = self.world.read_storage::<Hitbox>();
         let sprites = self.world.read_storage::<Sprite>();
         let bullets = self.world.read_storage::<Bullet>();
         let stars = self.world.read_storage::<Star>();
@@ -124,6 +125,30 @@ impl EventHandler for GameState<'_, '_> {
                 )
                 .unwrap();
             });
+
+        (&positions, &hitboxes).join().for_each(|(pos, hitbox)| {
+            let rect = Rect::new(pos.0.x, pos.0.y, hitbox.0, hitbox.1);
+            let mesh = graphics::Mesh::new_rectangle(
+                ctx,
+                DrawMode::stroke(2.5),
+                rect,
+                Color::new(1.0, 0.0, 0.0, 1.0),
+            )
+            .unwrap();
+            graphics::draw(ctx, &mesh, graphics::DrawParam::new()).unwrap();
+        });
+
+        (&positions, &bullets).join().for_each(|(pos, _)| {
+            let rect = Rect::new(pos.0.x, pos.0.y, 5.0, 5.0);
+            let mesh = graphics::Mesh::new_rectangle(
+                ctx,
+                DrawMode::stroke(2.5),
+                rect,
+                Color::new(1.0, 0.0, 0.0, 1.0),
+            )
+            .unwrap();
+            graphics::draw(ctx, &mesh, graphics::DrawParam::new()).unwrap();
+        });
 
         graphics::draw(ctx, &bullet_spritebatch.0, graphics::DrawParam::new())?;
         bullet_spritebatch.0.clear();

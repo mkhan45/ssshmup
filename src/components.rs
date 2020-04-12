@@ -1,4 +1,4 @@
-use ggez::graphics::{spritebatch::SpriteBatch, Color, Image, Rect};
+use ggez::graphics::{spritebatch::SpriteBatch, Color, Image};
 use ggez::nalgebra::{Point2, Vector2};
 
 use specs::prelude::*;
@@ -100,7 +100,7 @@ pub fn new_enemy(enemy_type: Enemy, pos: Point) -> EnemyTuple {
     let pos = Position(pos);
     let vel = Velocity::default();
     let (hp, size) = match enemy_type {
-        Enemy::BasicEnemy => (1, (55.0, 55.0)),
+        Enemy::BasicEnemy => (1, (55.0, 43.0)),
     };
 
     (pos, vel, enemy_type, HP(hp), Hitbox(size.0, size.1))
