@@ -99,15 +99,20 @@ fn main() -> GameResult {
         .with(systems::AnimationSys, "animation_sys", &[])
         .with(
             systems::BulletCollSys,
-            "bullet_col_sys",
+            "bullet_coll_sys",
             &["integrate_system"],
         )
         .with(
             systems::PlayerCollSys,
-            "player_col_sys",
+            "player_coll_sys",
             &["integrate_system"],
         )
-        .with(systems::HPKillSys, "hp_kill_sys", &["bullet_col_sys"])
+        .with(
+            systems::HPKillSys,
+            "hp_kill_sys",
+            &["bullet_coll_sys", "player_coll_sys"],
+        )
+        .with(systems::IFrameSys, "iframe_sys", &["hp_kill_sys"])
         .build();
 
     dispatcher.setup(&mut world);

@@ -137,7 +137,7 @@ impl<'a> System<'a> for HPKillSys {
         (&hp_storage, &entities)
             .par_join()
             .for_each(|(hp, entity)| {
-                if hp.0 == 0 {
+                if hp.remaining == 0 {
                     entities.delete(entity).unwrap();
                     if entity == player_entity.0 {
                         println!("Player died");
@@ -145,6 +145,19 @@ impl<'a> System<'a> for HPKillSys {
                     }
                 }
             });
+    }
+}
+
+pub struct IFrameSys;
+impl<'a> System<'a> for IFrameSys {
+    type SystemData = WriteStorage<'a, HP>;
+
+    fn run(&mut self, mut hp_storage: Self::SystemData) {
+        (&mut hp_storage).par_join().for_each(|hp| {
+            if hp.iframes > 0 {
+                hp.iframes -= 1;
+            }
+        });
     }
 }
 
@@ -186,7 +199,7 @@ impl<'a> System<'a> for BulletCollSys {
                     (&mut hp_storage, &positions, &hitboxes, &entities)
                         .join()
                         .for_each(|(hp, collided_pos, hitbox, entity)| {
-                            if (!bullet.friendly || entity != player_entity.0) && hp.0 > 0 {
+                            if (!bullet.friendly || entity != player_entity.0) && hp.remaining > 0 {
                                 let collidee_rect = Rect::new(
                                     collided_pos.0.x,
                                     collided_pos.0.y,
@@ -194,7 +207,7 @@ impl<'a> System<'a> for BulletCollSys {
                                     hitbox.1,
                                 );
                                 if bullet_rect.overlaps(&collidee_rect) {
-                                    hp.0 -= bullet.damage;
+                                    hp.remaining -= bullet.damage;
                                     explosion_positions.push(pos.0);
                                     entities.delete(bullet_entity).unwrap();
                                 }
@@ -275,28 +288,31 @@ impl<'a> System<'a> for PlayerCollSys {
     ) {
         let player_pos = positions.get(player_entity.0).unwrap().0;
         let player_hitbox = hitboxes.get(player_entity.0).unwrap();
-        let mut player_hp = hp_storage.get(player_entity.0).unwrap().0;
+        let mut player_hp = hp_storage.get(player_entity.0).unwrap().clone();
 
         let player_rect = Rect::new(player_pos.x, player_pos.y, player_hitbox.0, player_hitbox.1);
         (&mut hp_storage, &positions, &hitboxes, &entities, !&bullets)
             .join()
             .for_each(|(mut other_hp, pos, hbox, entity, _)| {
-                if entity == player_entity.0 {
+                if entity == player_entity.0 || other_hp.iframes > 0 || player_hp.iframes > 0 {
                     return;
                 }
 
                 let other_rect = Rect::new(pos.0.x, pos.0.y, hbox.0, hbox.1);
                 if other_rect.overlaps(&player_rect) {
                     if let Some(enemy) = enemies.get(entity) {
-                        let damage_to_player = match enemy {
-                            Enemy::BasicEnemy => 1,
+                        let (damage_to_player, iframes) = match enemy {
+                            Enemy::BasicEnemy => (1, 30),
                         };
-                        player_hp = (player_hp as i16 - damage_to_player).max(0) as u32;
+                        player_hp.remaining =
+                            (player_hp.remaining as i16 - damage_to_player).max(0) as u32;
+                        player_hp.iframes = iframes;
                     }
-                    other_hp.0 = (other_hp.0 as i16 - 3).max(0) as u32;
+                    other_hp.remaining = (other_hp.remaining as i16 - 3).max(0) as u32;
+                    other_hp.iframes = 30;
                 }
             });
 
-        hp_storage.get_mut(player_entity.0).unwrap().0 = player_hp;
+        *hp_storage.get_mut(player_entity.0).unwrap() = player_hp;
     }
 }

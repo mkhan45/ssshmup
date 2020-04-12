@@ -54,7 +54,19 @@ pub struct ColorRect {
 
 #[derive(Clone, Copy, Debug, PartialEq, Component)]
 #[storage(VecStorage)]
-pub struct HP(pub u32);
+pub struct HP {
+    pub remaining: u32,
+    pub iframes: u8,
+}
+
+impl HP {
+    pub fn new(hp: u32) -> Self {
+        HP {
+            remaining: hp,
+            iframes: 0,
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BulletType {
@@ -103,7 +115,7 @@ pub fn new_enemy(enemy_type: Enemy, pos: Point) -> EnemyTuple {
         Enemy::BasicEnemy => (1, (55.0, 43.0)),
     };
 
-    (pos, vel, enemy_type, HP(hp), Hitbox(size.0, size.1))
+    (pos, vel, enemy_type, HP::new(hp), Hitbox(size.0, size.1))
 }
 
 pub fn create_enemy(world: &mut World, enemy: &EnemyTuple) -> Entity {
@@ -165,7 +177,7 @@ pub fn new_player(sprite: Image, hp: u32) -> PlayerTuple {
         .into(),
     );
     let vel = Velocity::default();
-    let hp = HP(hp);
+    let hp = HP::new(hp);
 
     (
         pos,

@@ -82,6 +82,8 @@ impl EventHandler for GameState<'_, '_> {
         let sprites = self.world.read_storage::<Sprite>();
         let bullets = self.world.read_storage::<Bullet>();
         let stars = self.world.read_storage::<Star>();
+        let hp_storage = self.world.read_storage::<HP>();
+        let entities = self.world.entities();
         let animated_sprite_storage = self.world.read_storage::<AnimatedSprite>();
         let mut bullet_spritebatch = self.world.fetch_mut::<BulletSpriteBatch>();
 
@@ -98,13 +100,22 @@ impl EventHandler for GameState<'_, '_> {
                 draw_colorect(&mut builder, (*pos).into(), &colorect);
             });
 
-        (&positions, &sprites, !&bullets)
+        (&positions, &sprites, &entities, !&bullets)
             .join()
-            .for_each(|(pos, sprite, _)| {
+            .for_each(|(pos, sprite, entity, _)| {
+                let draw_color = if let Some(hp) = hp_storage.get(entity) {
+                    let opacity = (60 - hp.iframes as u32) as f32 / 60.0;
+                    Color::new(1.0, 1.0, 1.0, opacity.powi(5))
+                } else {
+                    graphics::WHITE
+                };
                 graphics::draw(
                     ctx,
                     &sprite.0,
-                    graphics::DrawParam::new().scale([3.0, 3.0]).dest(pos.0),
+                    graphics::DrawParam::new()
+                        .scale([3.0, 3.0])
+                        .dest(pos.0)
+                        .color(draw_color),
                 )
                 .unwrap()
             });
