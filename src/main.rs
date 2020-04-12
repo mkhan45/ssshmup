@@ -81,13 +81,13 @@ fn main() -> GameResult {
     (0..7).for_each(|i| {
         let enemy = components::new_enemy(
             components::Enemy::BasicEnemy,
-            [i as f32 * 60.0 + 10.0, 100.0].into(),
+            [i as f32 * 60.0 + 10.0, -100.0].into(),
         );
         components::create_enemy(&mut world, &enemy);
 
         let enemy = components::new_enemy(
             components::Enemy::BasicEnemy,
-            [i as f32 * 60.0 + 10.0, 200.0].into(),
+            [i as f32 * 60.0 + 10.0, 0.0].into(),
         );
         components::create_enemy(&mut world, &enemy);
     });

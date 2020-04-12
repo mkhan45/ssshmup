@@ -208,7 +208,7 @@ impl<'a> System<'a> for BulletCollSys {
                                 );
                                 if bullet_rect.overlaps(&collidee_rect) {
                                     hp.remaining -= bullet.damage;
-                                    explosion_positions.push(pos.0);
+                                    explosion_positions.push(pos.0 + Vector::new(-20.0, -20.0));
                                     entities.delete(bullet_entity).unwrap();
                                 }
                             }
@@ -275,6 +275,7 @@ impl<'a> System<'a> for PlayerCollSys {
     type SystemData = (
         WriteStorage<'a, HP>,
         ReadStorage<'a, Position>,
+        WriteStorage<'a, Velocity>,
         ReadStorage<'a, Hitbox>,
         ReadStorage<'a, Bullet>,
         ReadStorage<'a, Enemy>,
@@ -284,10 +285,11 @@ impl<'a> System<'a> for PlayerCollSys {
 
     fn run(
         &mut self,
-        (mut hp_storage, positions, hitboxes, bullets, enemies, entities, player_entity): Self::SystemData,
+        (mut hp_storage, positions, mut velocities, hitboxes, bullets, enemies, entities, player_entity): Self::SystemData,
     ) {
         let player_pos = positions.get(player_entity.0).unwrap().0;
         let player_hitbox = hitboxes.get(player_entity.0).unwrap();
+        let player_vel = velocities.get_mut(player_entity.0).unwrap();
         let mut player_hp = hp_storage.get(player_entity.0).unwrap().clone();
 
         let player_rect = Rect::new(player_pos.x, player_pos.y, player_hitbox.0, player_hitbox.1);

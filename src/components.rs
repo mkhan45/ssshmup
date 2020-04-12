@@ -110,12 +110,11 @@ pub enum Enemy {
 pub type EnemyTuple = (Position, Velocity, Enemy, HP, Hitbox);
 pub fn new_enemy(enemy_type: Enemy, pos: Point) -> EnemyTuple {
     let pos = Position(pos);
-    let vel = Velocity::default();
-    let (hp, size) = match enemy_type {
-        Enemy::BasicEnemy => (1, (55.0, 43.0)),
+    let (hp, size, vel) = match enemy_type {
+        Enemy::BasicEnemy => (1, (55.0, 43.0), [0.0, 0.5].into()),
     };
 
-    (pos, vel, enemy_type, HP::new(hp), Hitbox(size.0, size.1))
+    (pos, Velocity(vel), enemy_type, HP::new(hp), Hitbox(size.0, size.1))
 }
 
 pub fn create_enemy(world: &mut World, enemy: &EnemyTuple) -> Entity {
