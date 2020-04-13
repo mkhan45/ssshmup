@@ -137,17 +137,17 @@ impl EventHandler for GameState<'_, '_> {
                 .unwrap();
             });
 
-        // (&positions, &hitboxes).join().for_each(|(pos, hitbox)| {
-        //     let rect = Rect::new(pos.0.x, pos.0.y, hitbox.0, hitbox.1);
-        //     let mesh = graphics::Mesh::new_rectangle(
-        //         ctx,
-        //         DrawMode::stroke(2.5),
-        //         rect,
-        //         Color::new(1.0, 0.0, 0.0, 1.0),
-        //     )
-        //     .unwrap();
-        //     graphics::draw(ctx, &mesh, graphics::DrawParam::new()).unwrap();
-        // });
+        (&positions, &hitboxes).join().for_each(|(pos, hitbox)| {
+            let rect = Rect::new(pos.0.x, pos.0.y, hitbox.0, hitbox.1);
+            let mesh = graphics::Mesh::new_rectangle(
+                ctx,
+                DrawMode::stroke(2.5),
+                rect,
+                Color::new(1.0, 0.0, 0.0, 1.0),
+            )
+            .unwrap();
+            graphics::draw(ctx, &mesh, graphics::DrawParam::new()).unwrap();
+        });
 
         (&positions, &bullets).join().for_each(|(pos, _)| {
             let rect = Rect::new(pos.0.x, pos.0.y, 5.0, 5.0);

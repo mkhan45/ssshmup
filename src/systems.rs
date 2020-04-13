@@ -199,7 +199,10 @@ impl<'a> System<'a> for BulletCollSys {
                     (&mut hp_storage, &positions, &hitboxes, &entities)
                         .join()
                         .for_each(|(hp, collided_pos, hitbox, entity)| {
-                            if (!bullet.friendly || entity != player_entity.0) && hp.remaining > 0 {
+                            if (bullet.friendly && entity != player_entity.0)
+                                || (!bullet.friendly && entity == player_entity.0)
+                                    && hp.remaining > 0
+                            {
                                 let collidee_rect = Rect::new(
                                     collided_pos.0.x,
                                     collided_pos.0.y,
@@ -285,7 +288,16 @@ impl<'a> System<'a> for PlayerCollSys {
 
     fn run(
         &mut self,
-        (mut hp_storage, positions, mut velocities, hitboxes, bullets, enemies, entities, player_entity): Self::SystemData,
+        (
+            mut hp_storage,
+            positions,
+            mut velocities,
+            hitboxes,
+            bullets,
+            enemies,
+            entities,
+            player_entity,
+        ): Self::SystemData,
     ) {
         let player_pos = positions.get(player_entity.0).unwrap().0;
         let player_hitbox = hitboxes.get(player_entity.0).unwrap();
@@ -303,18 +315,93 @@ impl<'a> System<'a> for PlayerCollSys {
                 let other_rect = Rect::new(pos.0.x, pos.0.y, hbox.0, hbox.1);
                 if other_rect.overlaps(&player_rect) {
                     if let Some(enemy) = enemies.get(entity) {
-                        let (damage_to_player, iframes) = match enemy {
-                            Enemy::BasicEnemy => (1, 30),
+                        let (damage_to_player, iframes) = match enemy.ty {
+                            EnemyType::BasicEnemy => (1, 30),
                         };
                         player_hp.remaining =
                             (player_hp.remaining as i16 - damage_to_player).max(0) as u32;
                         player_hp.iframes = iframes;
+
+                        player_vel.0 += (player_pos - pos.0).normalize() * 20.0;
                     }
                     other_hp.remaining = (other_hp.remaining as i16 - 3).max(0) as u32;
-                    other_hp.iframes = 30;
                 }
             });
 
         *hp_storage.get_mut(player_entity.0).unwrap() = player_hp;
+    }
+}
+
+pub struct EnemyMoveSys;
+impl<'a> System<'a> for EnemyMoveSys {
+    type SystemData = (
+        ReadStorage<'a, Position>,
+        ReadStorage<'a, Enemy>,
+        WriteStorage<'a, Velocity>,
+    );
+
+    fn run(&mut self, (positions, enemies, mut velocities): Self::SystemData) {
+        (&enemies, &positions, &mut velocities).join().for_each(
+            |(enemy, pos, mut vel)| match &enemy.movement {
+                MovementType::HLine(range, _) => {
+                    if !range.contains(&pos.0.x) {
+                        vel.0.x *= -1.0;
+                    }
+                }
+                _ => todo!(),
+            },
+        );
+    }
+}
+
+pub struct EnemyShootSys;
+impl<'a> System<'a> for EnemyShootSys {
+    type SystemData = (
+        WriteStorage<'a, Position>,
+        WriteStorage<'a, Enemy>,
+        WriteStorage<'a, Velocity>,
+        WriteStorage<'a, Bullet>,
+        WriteStorage<'a, Sprite>,
+        Entities<'a>,
+        Read<'a, Sprites>,
+    );
+
+    fn run(
+        &mut self,
+        (mut positions, mut enemies, mut vels, mut bullets, mut sprite_storage, entities, sprites): Self::SystemData,
+    ) {
+        let mut new_bullets: Vec<(Point, BulletType)> = Vec::new();
+
+        (&positions, &mut enemies)
+            .join()
+            .for_each(|(pos, mut enemy)| {
+                if enemy.reload_timer != 0 {
+                    enemy.reload_timer -= 1;
+                } else {
+                    enemy.reload_timer = enemy.reload_speed;
+                    new_bullets.push((pos.0, enemy.bullet_type));
+                }
+            });
+
+        new_bullets.iter().for_each(|(pos, bullet_type)| {
+            let (damage, speed, sprite) = match bullet_type {
+                BulletType::BasicBullet => (1, 5.0, sprites.0.get("bullet1").unwrap().clone()),
+            };
+            let bullet_pos = pos + Vector::new(15.0, 30.0);
+            entities
+                .build_entity()
+                .with(Position(bullet_pos), &mut positions)
+                .with(
+                    Bullet {
+                        damage,
+                        friendly: false,
+                        ty: *bullet_type,
+                    },
+                    &mut bullets,
+                )
+                .with(Velocity([0.0, speed].into()), &mut vels)
+                .with(Sprite(sprite), &mut sprite_storage)
+                .build();
+        });
     }
 }

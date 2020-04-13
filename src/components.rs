@@ -101,28 +101,61 @@ pub fn new_bullet(ty: BulletType, pos: Point, start_vel: Vector, friendly: bool)
     )
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Component)]
-#[storage(VecStorage)]
-pub enum Enemy {
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum EnemyType {
     BasicEnemy,
 }
 
-pub type EnemyTuple = (Position, Velocity, Enemy, HP, Hitbox);
-pub fn new_enemy(enemy_type: Enemy, pos: Point) -> EnemyTuple {
-    let pos = Position(pos);
-    let (hp, size, vel) = match enemy_type {
-        Enemy::BasicEnemy => (1, (55.0, 43.0), [0.0, 0.5].into()),
-    };
-
-    (pos, Velocity(vel), enemy_type, HP::new(hp), Hitbox(size.0, size.1))
+#[derive(Clone, Debug, PartialEq)]
+pub enum MovementType {
+    HLine(std::ops::Range<f32>, f32),
+    VLine(std::ops::Range<f32>, f32),
+    Circle(Point, f32, f32),
 }
 
-pub fn create_enemy(world: &mut World, enemy: &EnemyTuple) -> Entity {
+#[derive(Clone, Debug, PartialEq, Component)]
+#[storage(VecStorage)]
+pub struct Enemy {
+    pub ty: EnemyType,
+    pub movement: MovementType,
+    pub bullet_type: BulletType,
+    pub reload_timer: u32,
+    pub reload_speed: u32,
+}
+
+pub type EnemyTuple = (Position, Velocity, Enemy, HP, Hitbox);
+pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTuple {
+    let pos = Position(pos);
+    let (hp, size, bullet_type) = match ty {
+        EnemyType::BasicEnemy => (1, (55.0, 43.0), BulletType::BasicBullet),
+    };
+
+    let vel = match movement {
+        MovementType::HLine(_, speed) => [speed, 0.0].into(),
+        _ => todo!(),
+    };
+
+    (
+        pos,
+        Velocity(vel),
+        Enemy {
+            ty,
+            movement,
+            bullet_type,
+            reload_timer: 180,
+            reload_speed: 180,
+        },
+        HP::new(hp),
+        Hitbox(size.0, size.1),
+    )
+}
+
+pub fn create_enemy(world: &mut World, enemy: EnemyTuple) -> Entity {
     let sprite = {
         let sprites = &world.fetch::<Sprites>().0;
         sprites
-            .get(match enemy.2 {
-                Enemy::BasicEnemy => "enemy1",
+            .get(match enemy.2.ty {
+                EnemyType::BasicEnemy => "enemy1",
             })
             .unwrap()
             .clone()

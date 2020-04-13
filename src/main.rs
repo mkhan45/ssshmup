@@ -8,7 +8,7 @@ mod components;
 mod game_state;
 mod systems;
 
-const SCREEN_WIDTH: f32 = 576.0 * 0.75;
+const SCREEN_WIDTH: f32 = 1024.0 * 0.75;
 const SCREEN_HEIGHT: f32 = 1024.0 * 0.75;
 
 fn main() -> GameResult {
@@ -36,7 +36,7 @@ fn main() -> GameResult {
     world.register::<components::Hitbox>();
 
     world.insert(components::StarInfo {
-        num_stars: 150,
+        num_stars: 200,
         size: 2.5,
         size_variance: 1.5,
         vel: 5.0,
@@ -78,24 +78,29 @@ fn main() -> GameResult {
     world.insert(components::Sprites(sprites));
     world.insert(components::AnimatedSprites(animated_sprites));
 
-    (0..7).for_each(|i| {
+    (0..10).for_each(|i| {
+        let min_x = i as f32 * 60.0;
         let enemy = components::new_enemy(
-            components::Enemy::BasicEnemy,
-            [i as f32 * 60.0 + 10.0, -100.0].into(),
+            components::EnemyType::BasicEnemy,
+            [min_x, 100.0].into(),
+            components::MovementType::HLine(min_x..min_x + 175.0, 1.25),
         );
-        components::create_enemy(&mut world, &enemy);
+        components::create_enemy(&mut world, enemy);
 
         let enemy = components::new_enemy(
-            components::Enemy::BasicEnemy,
-            [i as f32 * 60.0 + 10.0, 0.0].into(),
+            components::EnemyType::BasicEnemy,
+            [min_x, 0.0].into(),
+            components::MovementType::HLine(min_x..min_x + 175.0, 1.25),
         );
-        components::create_enemy(&mut world, &enemy);
+        components::create_enemy(&mut world, enemy);
     });
 
     let mut dispatcher = DispatcherBuilder::new()
+        .with(systems::EnemyMoveSys, "enemy_move_sys", &[])
         .with(systems::IntegrateSys, "integrate_system", &[])
         .with(systems::StarMoveSys, "star_system", &[])
         .with(systems::ReloadTimerSys, "reload_timer_sys", &[])
+        .with(systems::EnemyShootSys, "enemy_shoot_sys", &[])
         .with(systems::AnimationSys, "animation_sys", &[])
         .with(
             systems::BulletCollSys,
