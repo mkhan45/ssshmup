@@ -4,6 +4,8 @@ use specs::prelude::*;
 
 use std::collections::HashMap;
 
+use std::sync::{Arc, Mutex};
+
 mod components;
 mod game_state;
 mod systems;
@@ -16,8 +18,8 @@ fn main() -> GameResult {
         .window_setup(ggez::conf::WindowSetup::default().title("Tetrs"))
         .window_mode(
             ggez::conf::WindowMode::default()
-                .dimensions(SCREEN_WIDTH, SCREEN_HEIGHT)
-                .resizable(false),
+            .dimensions(SCREEN_WIDTH, SCREEN_HEIGHT)
+            .resizable(false),
         )
         .build()
         .expect("error building context");
@@ -45,37 +47,41 @@ fn main() -> GameResult {
         vel_variance: 2.0,
     });
 
-    let mut player_sprite = ggez::graphics::Image::new(ctx, "/player.png").unwrap();
-    player_sprite.set_filter(ggez::graphics::FilterMode::Nearest);
+    let player_sprite = ggez::graphics::Image::new(ctx, "/player.png").unwrap();
     let player = components::new_player(player_sprite, 3);
     let player = components::create_player(&mut world, player);
     world.insert(PlayerEntity(player));
 
     let mut sprites = HashMap::new();
     let mut animated_sprites = HashMap::new();
+    let mut spritesheets = HashMap::new();
     {
-        use ggez::graphics::{FilterMode, Image};
+        use ggez::graphics::Image;
         let enemy1_image = Image::new(ctx, "/ufo1.png");
         let bullet1_image = Image::new(ctx, "/bullet1.png");
-        // let bullet2_image = Image::new(ctx, "/bullet2.png");
 
         sprites.insert("enemy1".to_string(), enemy1_image.unwrap());
         sprites.insert("bullet1".to_string(), bullet1_image.unwrap());
-        // sprites.insert("bullet2".to_string(), bullet2_image.unwrap());
-        sprites
-            .iter_mut()
-            .for_each(|(_, image)| image.set_filter(FilterMode::Nearest));
 
-        let mut explosion_img = Image::new(ctx, "/boom.png").unwrap();
-        explosion_img.set_filter(FilterMode::Nearest);
+        let bullet_spritesheet = Image::new(ctx, "/bullet_sheet.png");
+        let bullet_spritebatch = SpriteBatch::new(bullet_spritesheet.unwrap());
+        spritesheets.insert("bullets".to_string(), Arc::new(Mutex::new(components::SpriteSheet{ width: 4, batch: bullet_spritebatch })));
+        // world.create_entity()
+        //     .with(components::Sprite::SpriteSheetInstance(spritesheets.get("bullets").unwrap().clone(), 1))
+        //     .with(components::Position([200.0, 200.0].into()))
+        //     .with(components::Velocity([0.1, 0.0].into()))
+        //     .build();
 
+        let explosion_img = Image::new(ctx, "/boom.png").unwrap();
         animated_sprites.insert("explosion".to_string(), components::AnimatedSprite::new(explosion_img, 12, 16, true));
     }
     world.insert(components::BulletSpriteBatch(SpriteBatch::new(
-        sprites.get("bullet1").unwrap().clone(),
+                sprites.get("bullet1").unwrap().clone(),
     )));
     world.insert(components::Sprites(sprites));
     world.insert(components::AnimatedSprites(animated_sprites));
+    world.insert(components::SpriteSheets(spritesheets));
+
 
 
     (0..9).for_each(|i| {
@@ -103,7 +109,7 @@ fn main() -> GameResult {
 
         let enemy = components::new_enemy(
             et2,
-            [min_x, 0.0].into(),
+            [min_x, 10.0].into(),
             components::MovementType::HLine(min_x..min_x + 175.0, 1.25),
         );
         components::create_enemy(&mut world, enemy);
@@ -140,4 +146,5 @@ fn main() -> GameResult {
     let mut game_state = game_state::GameState::new(world, dispatcher);
 
     event::run(ctx, event_loop, &mut game_state)
+
 }

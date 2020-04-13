@@ -6,6 +6,8 @@ use specs::Component;
 
 use std::collections::HashMap;
 
+use std::sync::{Arc, Mutex};
+
 pub type Point = Point2<f32>;
 pub type Vector = Vector2<f32>;
 
@@ -28,9 +30,12 @@ impl Default for Velocity {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Component)]
+#[derive(Clone, Debug, Component)]
 #[storage(VecStorage)]
-pub struct Sprite(pub Image);
+pub enum Sprite {
+    Img(Image),
+    SpriteSheetInstance(Arc<Mutex<SpriteSheet>>, u8),
+}
 
 #[derive(Clone, Debug, PartialEq, Component)]
 #[storage(DenseVecStorage)]
@@ -104,12 +109,19 @@ pub struct Bullet {
     pub ty: BulletType,
 }
 
-pub type BulletTuple = (Position, Velocity, Bullet);
+pub type BulletTuple = (Position, Velocity, Bullet, u8);
 pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, friendly: bool) -> BulletTuple {
     let damage = match ty {
         BulletType::BasicBullet => 1,
         BulletType::AimedBullet => 1,
         BulletType::PredictBullet => 1,
+        BulletType::TrackingBullet => 1,
+    };
+
+    let sprite_index = match ty {
+        BulletType::BasicBullet => 0,
+        BulletType::AimedBullet => 0,
+        BulletType::PredictBullet => 0,
         BulletType::TrackingBullet => 1,
     };
 
@@ -120,7 +132,7 @@ pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, friendly: bool) -> Bu
     };
 
     let pos: Point = [pos.x, pos.y - 16.0].into();
-    (Position(pos), Velocity(vel), bullet)
+    (Position(pos), Velocity(vel), bullet, sprite_index)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -188,7 +200,7 @@ pub fn create_enemy(world: &mut World, enemy: EnemyTuple) -> Entity {
                 EnemyType::PredictEnemy => "enemy1",
                 EnemyType::TrackingEnemy => "enemy1",
             })
-            .unwrap()
+        .unwrap()
             .clone()
     };
 
@@ -199,7 +211,7 @@ pub fn create_enemy(world: &mut World, enemy: EnemyTuple) -> Entity {
         .with(enemy.2)
         .with(enemy.3)
         .with(enemy.4)
-        .with(Sprite(sprite))
+        .with(Sprite::Img(sprite))
         .build()
 }
 
@@ -234,8 +246,8 @@ pub type PlayerTuple = (Position, Velocity, HP, Sprite, Player, Hitbox);
 pub fn new_player(sprite: Image, hp: u32) -> PlayerTuple {
     let pos = Position(
         [
-            crate::SCREEN_WIDTH / 2.0 - 25.0,
-            crate::SCREEN_HEIGHT * 0.75,
+        crate::SCREEN_WIDTH / 2.0 - 25.0,
+        crate::SCREEN_HEIGHT * 0.75,
         ]
         .into(),
     );
@@ -246,7 +258,7 @@ pub fn new_player(sprite: Image, hp: u32) -> PlayerTuple {
         pos,
         vel,
         hp,
-        Sprite(sprite),
+        Sprite::Img(sprite),
         Player::default(),
         Hitbox(45.0, 45.0),
     )
@@ -308,6 +320,15 @@ pub struct Hitbox(pub f32, pub f32);
 
 #[derive(Clone, Default)]
 pub struct Sprites(pub HashMap<String, Image>);
+
+#[derive(Clone, Debug)]
+pub struct SpriteSheet {
+    pub width: u8,
+    pub batch: SpriteBatch,
+}
+
+#[derive(Clone, Default)]
+pub struct SpriteSheets(pub HashMap<String, Arc<Mutex<SpriteSheet>>>);
 
 #[derive(Clone)]
 pub struct BulletSpriteBatch(pub SpriteBatch);

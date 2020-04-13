@@ -84,7 +84,7 @@ impl<'a> System<'a> for SpawnBulletSys {
         WriteStorage<'a, Sprite>,
         Entities<'a>,
         Read<'a, PlayerEntity>,
-        Read<'a, Sprites>,
+        Read<'a, SpriteSheets>,
     );
 
     fn run(
@@ -97,7 +97,7 @@ impl<'a> System<'a> for SpawnBulletSys {
             mut sprite_res,
             entities,
             player_entity,
-            sprites,
+            spritesheets,
         ): Self::SystemData,
     ) {
         let player_data = &mut players.get_mut(player_entity.0).unwrap();
@@ -106,32 +106,22 @@ impl<'a> System<'a> for SpawnBulletSys {
         if player_data.reload_timer == 0 {
             player_data.reload_timer = player_data.reload_speed;
             let player_pos = positions.get(player_entity.0).unwrap().0;
-            let bullet_pos: Point = player_pos + Vector::new(18.0, 5.0);
+            let bullet_pos: Point = player_pos + Vector::new(12.5, 5.0);
             let bullet = new_bullet(
                 player_data.bullet_type,
                 bullet_pos,
                 [0.0, -5.0 + player_vel.y.min(0.0)].into(),
                 true,
             );
-            let sprite = {
-                sprites
-                    .0
-                    .get(match player_data.bullet_type {
-                        BulletType::BasicBullet => "bullet1",
-                        BulletType::AimedBullet => "bullet1",
-                        BulletType::PredictBullet => "bullet1",
-                        BulletType::TrackingBullet => "bullet1",
-                    })
-                    .unwrap()
-                    .clone()
-            };
+
+            let spritesheet = spritesheets.0.get("bullets").unwrap().clone();
 
             entities
                 .build_entity()
                 .with(bullet.0, &mut positions)
                 .with(bullet.1, &mut vels)
                 .with(bullet.2, &mut bullets)
-                .with(Sprite(sprite), &mut sprite_res)
+                .with(Sprite::SpriteSheetInstance(spritesheet, bullet.3), &mut sprite_res)
                 .build();
         }
     }
@@ -197,39 +187,40 @@ impl<'a> System<'a> for BulletCollSys {
     ) {
         let mut explosion_positions: Vec<Point> = Vec::new();
 
+        //TODO Bullet hitboxes
         (&bullets, &positions, &entities)
             .join()
             .for_each(|(bullet, pos, bullet_entity)| {
-                let bullet_rect = Rect::new(pos.0.x, pos.0.y, 5.0, 5.0);
+                let bullet_rect = Rect::new(pos.0.x + 8.0, pos.0.y + 8.0 , 10.0, 10.0);
                 if !(-10.0..crate::SCREEN_WIDTH).contains(&pos.0.x) || 
                     !(-10.0..crate::SCREEN_HEIGHT).contains(&pos.0.y) {
-                    entities.delete(bullet_entity).unwrap();
-                } else {
-                    (&mut hp_storage, &positions, &hitboxes, &entities)
-                        .join()
-                        .for_each(|(hp, collided_pos, hitbox, entity)| {
-                            if (bullet.friendly && entity != player_entity.0)
-                                || (!bullet.friendly && entity == player_entity.0)
-                                    && hp.remaining > 0
-                            {
-                                let collidee_rect = Rect::new(
-                                    collided_pos.0.x,
-                                    collided_pos.0.y,
-                                    hitbox.0,
-                                    hitbox.1,
-                                );
-                                if bullet_rect.overlaps(&collidee_rect) {
-                                    if hp.remaining >= bullet.damage {
-                                        hp.remaining -= bullet.damage;
-                                    } else {
-                                        hp.remaining = 0;
+                        entities.delete(bullet_entity).unwrap();
+                    } else {
+                        (&mut hp_storage, &positions, &hitboxes, &entities)
+                            .join()
+                            .for_each(|(hp, collided_pos, hitbox, entity)| {
+                                if (bullet.friendly && entity != player_entity.0)
+                                    || (!bullet.friendly && entity == player_entity.0)
+                                        && hp.remaining > 0
+                                {
+                                    let collidee_rect = Rect::new(
+                                        collided_pos.0.x,
+                                        collided_pos.0.y,
+                                        hitbox.0,
+                                        hitbox.1,
+                                    );
+                                    if bullet_rect.overlaps(&collidee_rect) {
+                                        if hp.remaining >= bullet.damage {
+                                            hp.remaining -= bullet.damage;
+                                        } else {
+                                            hp.remaining = 0;
+                                        }
+                                        explosion_positions.push(pos.0 + Vector::new(-20.0, -20.0));
+                                        entities.delete(bullet_entity).unwrap();
                                     }
-                                    explosion_positions.push(pos.0 + Vector::new(-20.0, -20.0));
-                                    entities.delete(bullet_entity).unwrap();
                                 }
-                            }
-                        });
-                }
+                            });
+                    }
             });
 
         explosion_positions.iter().for_each(|pos| {
@@ -370,7 +361,7 @@ impl<'a> System<'a> for EnemyShootSys {
         WriteStorage<'a, Bullet>,
         WriteStorage<'a, Sprite>,
         Entities<'a>,
-        Read<'a, Sprites>,
+        Read<'a, SpriteSheets>,
         Read<'a, PlayerEntity>,
     );
 
@@ -383,7 +374,7 @@ impl<'a> System<'a> for EnemyShootSys {
             mut bullets,
             mut sprite_storage,
             entities,
-            sprites,
+            spritesheets,
             player_entity,
         ): Self::SystemData,
     ) {
@@ -404,9 +395,9 @@ impl<'a> System<'a> for EnemyShootSys {
         let player_vel = vels.get(player_entity.0).unwrap().0;
 
         new_bullets.iter().for_each(|(pos, bullet_type)| {
-            let (vel, sprite) = match bullet_type {
+            let vel = match bullet_type {
                 BulletType::BasicBullet => {
-                    ([0.0, 8.0].into(), sprites.0.get("bullet1").unwrap().clone())
+                    [0.0, 8.0].into()
                 }
                 BulletType::AimedBullet | BulletType::TrackingBullet => {
                     let speed = match bullet_type {
@@ -415,7 +406,7 @@ impl<'a> System<'a> for EnemyShootSys {
                         _ => panic!("something has gone terribly wrong"),
                     };
                     let vel = (player_pos - pos).normalize() * speed;
-                    (vel, sprites.0.get("bullet1").unwrap().clone())
+                    vel
                 }
                 BulletType::PredictBullet => {
                     let bullet_speed = 10.0f32;
@@ -428,16 +419,17 @@ impl<'a> System<'a> for EnemyShootSys {
                     let direction = (player_projected_pos - pos).normalize();
 
                     let vel = direction * bullet_speed;
-                    (vel, sprites.0.get("bullet1").unwrap().clone())
+                    vel
                 }
             };
             let bullet_tuple = new_bullet(*bullet_type, *pos, vel, false);
+            let spritesheet = spritesheets.0.get("bullets").unwrap().clone();
             entities
                 .build_entity()
                 .with(bullet_tuple.0, &mut positions)
                 .with(bullet_tuple.2, &mut bullets)
                 .with(bullet_tuple.1, &mut vels)
-                .with(Sprite(sprite), &mut sprite_storage)
+                .with(Sprite::SpriteSheetInstance(spritesheet, bullet_tuple.3), &mut sprite_storage)
                 .build();
             });
     }
