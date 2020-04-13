@@ -80,15 +80,26 @@ fn main() -> GameResult {
 
     (0..10).for_each(|i| {
         let min_x = i as f32 * 60.0;
+        let (et1, et2) = if i % 2 == 0 {
+            (
+                components::EnemyType::AimEnemy,
+                components::EnemyType::BasicEnemy,
+            )
+        } else {
+            (
+                components::EnemyType::BasicEnemy,
+                components::EnemyType::AimEnemy,
+            )
+        };
         let enemy = components::new_enemy(
-            components::EnemyType::BasicEnemy,
+            et1,
             [min_x, 100.0].into(),
             components::MovementType::HLine(min_x..min_x + 175.0, 1.25),
         );
         components::create_enemy(&mut world, enemy);
 
         let enemy = components::new_enemy(
-            components::EnemyType::BasicEnemy,
+            et2,
             [min_x, 0.0].into(),
             components::MovementType::HLine(min_x..min_x + 175.0, 1.25),
         );

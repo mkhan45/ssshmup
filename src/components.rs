@@ -71,6 +71,7 @@ impl HP {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BulletType {
     BasicBullet,
+    AimedBullet,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Component)]
@@ -82,9 +83,10 @@ pub struct Bullet {
 }
 
 pub type BulletTuple = (Position, Velocity, Bullet);
-pub fn new_bullet(ty: BulletType, pos: Point, start_vel: Vector, friendly: bool) -> BulletTuple {
-    let (damage, speed) = match ty {
-        BulletType::BasicBullet => (1, 8.0),
+pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, friendly: bool) -> BulletTuple {
+    let damage = match ty {
+        BulletType::BasicBullet => 1,
+        BulletType::AimedBullet => 1,
     };
 
     let bullet = Bullet {
@@ -94,16 +96,13 @@ pub fn new_bullet(ty: BulletType, pos: Point, start_vel: Vector, friendly: bool)
     };
 
     let pos: Point = [pos.x, pos.y - 16.0].into();
-    (
-        Position(pos),
-        Velocity([0.0, -speed + start_vel.y.min(0.0)].into()),
-        bullet,
-    )
+    (Position(pos), Velocity(vel), bullet)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum EnemyType {
     BasicEnemy,
+    AimEnemy,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -128,6 +127,7 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
     let pos = Position(pos);
     let (hp, size, bullet_type) = match ty {
         EnemyType::BasicEnemy => (1, (55.0, 43.0), BulletType::BasicBullet),
+        EnemyType::AimEnemy => (1, (55.0, 43.0), BulletType::AimedBullet),
     };
 
     let vel = match movement {
@@ -156,6 +156,7 @@ pub fn create_enemy(world: &mut World, enemy: EnemyTuple) -> Entity {
         sprites
             .get(match enemy.2.ty {
                 EnemyType::BasicEnemy => "enemy1",
+                EnemyType::AimEnemy => "enemy1",
             })
             .unwrap()
             .clone()
