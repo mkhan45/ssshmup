@@ -22,6 +22,8 @@ fn main() -> GameResult {
         .build()
         .expect("error building context");
 
+    ggez::graphics::set_default_filter(ctx, ggez::graphics::FilterMode::Nearest);
+
     let mut world = World::new();
 
     world.register::<components::Position>();
@@ -55,22 +57,19 @@ fn main() -> GameResult {
         use ggez::graphics::{FilterMode, Image};
         let enemy1_image = Image::new(ctx, "/ufo1.png");
         let bullet1_image = Image::new(ctx, "/bullet1.png");
+        // let bullet2_image = Image::new(ctx, "/bullet2.png");
 
         sprites.insert("enemy1".to_string(), enemy1_image.unwrap());
         sprites.insert("bullet1".to_string(), bullet1_image.unwrap());
+        // sprites.insert("bullet2".to_string(), bullet2_image.unwrap());
         sprites
             .iter_mut()
             .for_each(|(_, image)| image.set_filter(FilterMode::Nearest));
 
-        let explosion: Vec<Image> = (1..12)
-            .map(|i| {
-                let mut img = Image::new(ctx, format!("/explosion/explosion{:02}.png", i)).unwrap();
-                img.set_filter(FilterMode::Nearest);
-                img
-            })
-            .collect();
+        let mut explosion_img = Image::new(ctx, "/boom.png").unwrap();
+        explosion_img.set_filter(FilterMode::Nearest);
 
-        animated_sprites.insert("explosion".to_string(), explosion);
+        animated_sprites.insert("explosion".to_string(), components::AnimatedSprite::new(explosion_img, 12, 16, true));
     }
     world.insert(components::BulletSpriteBatch(SpriteBatch::new(
         sprites.get("bullet1").unwrap().clone(),

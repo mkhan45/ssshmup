@@ -233,16 +233,10 @@ impl<'a> System<'a> for BulletCollSys {
             entities
                 .build_entity()
                 .with(Position(*pos), &mut positions)
-                .with(
-                    AnimatedSprite {
-                        frames: animated_sprites.0.get("explosion").unwrap().to_vec(),
-                        current_frame: 0,
-                        temporary: true,
-                    },
-                    &mut animated_sprite_storage,
+                .with(animated_sprites.0.get("explosion").unwrap().clone(), &mut animated_sprite_storage,
                 )
                 .build();
-        });
+            });
     }
 }
 
@@ -264,14 +258,11 @@ impl<'a> System<'a> for AnimationSys {
     type SystemData = (WriteStorage<'a, AnimatedSprite>, Entities<'a>);
 
     fn run(&mut self, (mut animated_sprite_storage, entities): Self::SystemData) {
-        use std::convert::TryInto;
-
         (&mut animated_sprite_storage, &entities)
             .join()
             .for_each(|(animated_sprite, entity)| {
                 animated_sprite.current_frame += 1;
-                assert!(animated_sprite.frames.len() < 256);
-                if animated_sprite.current_frame == animated_sprite.frames.len().try_into().unwrap()
+                if animated_sprite.current_frame == animated_sprite.num_frames
                 {
                     if animated_sprite.temporary {
                         entities.delete(entity).unwrap();

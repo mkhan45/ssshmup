@@ -35,9 +35,29 @@ pub struct Sprite(pub Image);
 #[derive(Clone, Debug, PartialEq, Component)]
 #[storage(DenseVecStorage)]
 pub struct AnimatedSprite {
-    pub frames: Vec<Image>,
+    pub spritesheet: Image,
+    pub num_frames: u8,
+    pub spritesheet_width: u8,
     pub current_frame: u8,
     pub temporary: bool,
+}
+
+impl AnimatedSprite {
+    pub fn new(spritesheet: Image, num_frames: u8, spritesheet_width: u8, temporary: bool) -> Self {
+        AnimatedSprite {
+            spritesheet,
+            num_frames,
+            spritesheet_width,
+            current_frame: 0,
+            temporary,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn set_temporary(mut self, temporary: bool) -> Self {
+        self.temporary = temporary;
+        self
+    }
 }
 
 #[derive(Clone, Copy, Default, Component)]
@@ -283,4 +303,4 @@ pub struct Sprites(pub HashMap<String, Image>);
 pub struct BulletSpriteBatch(pub SpriteBatch);
 
 #[derive(Clone, Default)]
-pub struct AnimatedSprites(pub HashMap<String, Vec<Image>>);
+pub struct AnimatedSprites(pub HashMap<String, AnimatedSprite>);

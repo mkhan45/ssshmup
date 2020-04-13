@@ -25,6 +25,7 @@ impl<'a, 'b> GameState<'a, 'b> {
 
 impl EventHandler for GameState<'_, '_> {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
+        // std::thread::sleep(std::time::Duration::from_millis(3000));
         if ggez::timer::ticks(&ctx) % 120 == 0 {
             dbg!(ggez::timer::fps(&ctx));
         }
@@ -129,10 +130,17 @@ impl EventHandler for GameState<'_, '_> {
         (&positions, &animated_sprite_storage)
             .join()
             .for_each(|(pos, animated_sprite)| {
+                let frame_width = 1.0 / animated_sprite.spritesheet_width as f32;
+                let src_rect = Rect::new(
+                    animated_sprite.current_frame as f32 * frame_width,
+                    0.0,
+                    frame_width,
+                    1.0,
+                    );
                 graphics::draw(
                     ctx,
-                    &animated_sprite.frames[animated_sprite.current_frame as usize],
-                    graphics::DrawParam::new().scale([3.5, 3.5]).dest(pos.0),
+                    &animated_sprite.spritesheet,
+                    graphics::DrawParam::new().src(src_rect).scale([3.5, 3.5]).dest(pos.0),
                 )
                 .unwrap();
             });
