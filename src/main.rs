@@ -77,19 +77,23 @@ fn main() -> GameResult {
     world.insert(components::Sprites(sprites));
     world.insert(components::AnimatedSprites(animated_sprites));
 
-    (0..10).for_each(|i| {
+
+    (0..9).for_each(|i| {
         let min_x = i as f32 * 60.0;
-        let (et1, et2) = if i % 2 == 0 {
+        let (mut et1, et2) = if i % 2 == 0 {
             (
-                components::EnemyType::AimEnemy,
                 components::EnemyType::BasicEnemy,
+                components::EnemyType::AimEnemy,
             )
         } else {
             (
+                components::EnemyType::PredictEnemy,
                 components::EnemyType::BasicEnemy,
-                components::EnemyType::AimEnemy,
             )
         };
+        if i == 0 || i == 8 {
+            et1 = components::EnemyType::TrackingEnemy;
+        }
         let enemy = components::new_enemy(
             et1,
             [min_x, 100.0].into(),
@@ -107,6 +111,7 @@ fn main() -> GameResult {
 
     let mut dispatcher = DispatcherBuilder::new()
         .with(systems::EnemyMoveSys, "enemy_move_sys", &[])
+        .with(systems::BulletTrackingSys, "tracking_bullet_sys", &[])
         .with(systems::IntegrateSys, "integrate_system", &[])
         .with(systems::StarMoveSys, "star_system", &[])
         .with(systems::ReloadTimerSys, "reload_timer_sys", &[])

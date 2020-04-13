@@ -92,6 +92,8 @@ impl HP {
 pub enum BulletType {
     BasicBullet,
     AimedBullet,
+    PredictBullet,
+    TrackingBullet,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Component)]
@@ -107,6 +109,8 @@ pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, friendly: bool) -> Bu
     let damage = match ty {
         BulletType::BasicBullet => 1,
         BulletType::AimedBullet => 1,
+        BulletType::PredictBullet => 1,
+        BulletType::TrackingBullet => 1,
     };
 
     let bullet = Bullet {
@@ -123,6 +127,8 @@ pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, friendly: bool) -> Bu
 pub enum EnemyType {
     BasicEnemy,
     AimEnemy,
+    PredictEnemy,
+    TrackingEnemy,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -145,9 +151,11 @@ pub struct Enemy {
 pub type EnemyTuple = (Position, Velocity, Enemy, HP, Hitbox);
 pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTuple {
     let pos = Position(pos);
-    let (hp, size, bullet_type) = match ty {
-        EnemyType::BasicEnemy => (1, (55.0, 43.0), BulletType::BasicBullet),
-        EnemyType::AimEnemy => (1, (55.0, 43.0), BulletType::AimedBullet),
+    let (hp, size, bullet_type, reload_speed) = match ty {
+        EnemyType::BasicEnemy => (3, (55.0, 43.0), BulletType::BasicBullet, 180),
+        EnemyType::AimEnemy => (3, (55.0, 43.0), BulletType::AimedBullet, 180),
+        EnemyType::PredictEnemy => (3, (55.0, 43.0), BulletType::PredictBullet, 90),
+        EnemyType::TrackingEnemy => (3, (55.0, 43.0), BulletType::TrackingBullet, 180),
     };
 
     let vel = match movement {
@@ -162,8 +170,8 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
             ty,
             movement,
             bullet_type,
-            reload_timer: 180,
-            reload_speed: 180,
+            reload_timer: reload_speed,
+            reload_speed,
         },
         HP::new(hp),
         Hitbox(size.0, size.1),
@@ -177,6 +185,8 @@ pub fn create_enemy(world: &mut World, enemy: EnemyTuple) -> Entity {
             .get(match enemy.2.ty {
                 EnemyType::BasicEnemy => "enemy1",
                 EnemyType::AimEnemy => "enemy1",
+                EnemyType::PredictEnemy => "enemy1",
+                EnemyType::TrackingEnemy => "enemy1",
             })
             .unwrap()
             .clone()

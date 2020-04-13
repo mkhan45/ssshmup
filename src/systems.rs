@@ -119,6 +119,8 @@ impl<'a> System<'a> for SpawnBulletSys {
                     .get(match player_data.bullet_type {
                         BulletType::BasicBullet => "bullet1",
                         BulletType::AimedBullet => "bullet1",
+                        BulletType::PredictBullet => "bullet1",
+                        BulletType::TrackingBullet => "bullet1",
                     })
                     .unwrap()
                     .clone()
@@ -199,7 +201,8 @@ impl<'a> System<'a> for BulletCollSys {
             .join()
             .for_each(|(bullet, pos, bullet_entity)| {
                 let bullet_rect = Rect::new(pos.0.x, pos.0.y, 5.0, 5.0);
-                if pos.0.y <= -20.0 {
+                if !(-10.0..crate::SCREEN_WIDTH).contains(&pos.0.x) || 
+                    !(-10.0..crate::SCREEN_HEIGHT).contains(&pos.0.y) {
                     entities.delete(bullet_entity).unwrap();
                 } else {
                     (&mut hp_storage, &positions, &hitboxes, &entities)
@@ -319,6 +322,8 @@ impl<'a> System<'a> for PlayerCollSys {
                         let (damage_to_player, iframes) = match enemy.ty {
                             EnemyType::BasicEnemy => (1, 30),
                             EnemyType::AimEnemy => (1, 30),
+                            EnemyType::PredictEnemy => (1, 30),
+                            EnemyType::TrackingEnemy => (1, 30),
                         };
                         player_hp.remaining =
                             (player_hp.remaining as i16 - damage_to_player).max(0) as u32;
@@ -393,17 +398,36 @@ impl<'a> System<'a> for EnemyShootSys {
                     Some((pos.0, enemy.bullet_type))
                 }
             })
-            .collect();
+        .collect();
 
         let player_pos = positions.get(player_entity.0).unwrap().0;
+        let player_vel = vels.get(player_entity.0).unwrap().0;
 
         new_bullets.iter().for_each(|(pos, bullet_type)| {
             let (vel, sprite) = match bullet_type {
                 BulletType::BasicBullet => {
                     ([0.0, 8.0].into(), sprites.0.get("bullet1").unwrap().clone())
                 }
-                BulletType::AimedBullet => {
-                    let vel = (player_pos - pos).normalize() * 8.0;
+                BulletType::AimedBullet | BulletType::TrackingBullet => {
+                    let speed = match bullet_type {
+                        BulletType::AimedBullet => 9.0,
+                        BulletType::TrackingBullet => 5.0,
+                        _ => panic!("something has gone terribly wrong"),
+                    };
+                    let vel = (player_pos - pos).normalize() * speed;
+                    (vel, sprites.0.get("bullet1").unwrap().clone())
+                }
+                BulletType::PredictBullet => {
+                    let bullet_speed = 10.0f32;
+
+                    let player_vec = player_pos - pos;
+                    let dist_to_player = player_vec.norm();
+                    let time_to_hit = dist_to_player / bullet_speed;
+
+                    let player_projected_pos = player_pos + player_vel * time_to_hit; 
+                    let direction = (player_projected_pos - pos).normalize();
+
+                    let vel = direction * bullet_speed;
                     (vel, sprites.0.get("bullet1").unwrap().clone())
                 }
             };
@@ -415,6 +439,20 @@ impl<'a> System<'a> for EnemyShootSys {
                 .with(bullet_tuple.1, &mut vels)
                 .with(Sprite(sprite), &mut sprite_storage)
                 .build();
+            });
+    }
+}
+
+pub struct BulletTrackingSys;
+impl<'a> System<'a> for BulletTrackingSys {
+    type SystemData = (WriteStorage<'a, Velocity>, ReadStorage<'a, Position>, ReadStorage<'a, Bullet>, Read<'a, PlayerEntity>);
+
+    fn run(&mut self, (mut vels, positions, bullets, player_entity): Self::SystemData) {
+        let player_pos = positions.get(player_entity.0).unwrap().0;
+        (&mut vels, &positions, &bullets).join().filter(|(_, _, bullet)| bullet.ty == BulletType::TrackingBullet).for_each(|(vel, pos, _)|{
+            let direction = (player_pos - pos.0).normalize();
+            let target_vel = direction * 8.0;
+            vel.0 += (target_vel - vel.0) * 0.02;
         });
     }
 }
