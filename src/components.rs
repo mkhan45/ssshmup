@@ -101,16 +101,33 @@ pub enum BulletType {
     TrackingBullet,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DamagesWho {
+    Player,
+    Enemy,
+    Both,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Component)]
 #[storage(VecStorage)]
 pub struct Bullet {
     pub damage: u32,
-    pub friendly: bool,
+    pub damages_who: DamagesWho,
     pub ty: BulletType,
 }
 
-pub type BulletTuple = (Position, Velocity, Bullet, u8);
-pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, friendly: bool) -> BulletTuple {
+impl Bullet {
+    pub fn damages_player(&self) -> bool {
+        self.damages_who == DamagesWho::Both || self.damages_who == DamagesWho::Player
+    }
+
+    pub fn damages_enemy(&self) -> bool {
+        self.damages_who == DamagesWho::Both || self.damages_who == DamagesWho::Enemy
+    }
+}
+
+pub type BulletTuple = (Position, Hitbox, Velocity, Bullet, u8);
+pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, damages_who: DamagesWho) -> BulletTuple {
     let damage = match ty {
         BulletType::BasicBullet => 1,
         BulletType::AimedBullet => 1,
@@ -125,14 +142,18 @@ pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, friendly: bool) -> Bu
         BulletType::TrackingBullet => 1,
     };
 
+    let (offset, width, height) = match ty {
+        BulletType::BasicBullet | BulletType::AimedBullet | BulletType::PredictBullet | BulletType::TrackingBullet=> (Point::new(5.0, 5.0), 15.0, 15.0),
+    };
+
     let bullet = Bullet {
         damage,
         ty,
-        friendly,
+        damages_who,
     };
 
     let pos: Point = [pos.x, pos.y - 16.0].into();
-    (Position(pos), Velocity(vel), bullet, sprite_index)
+    (Position(pos), Hitbox(offset, width, height), Velocity(vel), bullet, sprite_index)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -186,7 +207,7 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
             reload_speed,
         },
         HP::new(hp),
-        Hitbox(size.0, size.1),
+        Hitbox([0.0, 0.0].into(), size.0, size.1),
     )
 }
 
@@ -260,7 +281,7 @@ pub fn new_player(sprite: Image, hp: u32) -> PlayerTuple {
         hp,
         Sprite::Img(sprite),
         Player::default(),
-        Hitbox(45.0, 45.0),
+        Hitbox([0.0, 0.0].into(), 45.0, 45.0),
     )
 }
 
@@ -314,9 +335,9 @@ impl StarInfo {
 #[storage(NullStorage)]
 pub struct Star;
 
-#[derive(Clone, Copy, Debug, PartialEq, Component, Default)]
+#[derive(Clone, Copy, Debug, PartialEq, Component)]
 #[storage(VecStorage)]
-pub struct Hitbox(pub f32, pub f32);
+pub struct Hitbox(pub Point, pub f32, pub f32);
 
 #[derive(Clone, Default)]
 pub struct Sprites(pub HashMap<String, Image>);

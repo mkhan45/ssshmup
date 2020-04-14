@@ -66,11 +66,6 @@ fn main() -> GameResult {
         let bullet_spritesheet = Image::new(ctx, "/bullet_sheet.png");
         let bullet_spritebatch = SpriteBatch::new(bullet_spritesheet.unwrap());
         spritesheets.insert("bullets".to_string(), Arc::new(Mutex::new(components::SpriteSheet{ width: 4, batch: bullet_spritebatch })));
-        // world.create_entity()
-        //     .with(components::Sprite::SpriteSheetInstance(spritesheets.get("bullets").unwrap().clone(), 1))
-        //     .with(components::Position([200.0, 200.0].into()))
-        //     .with(components::Velocity([0.1, 0.0].into()))
-        //     .build();
 
         let explosion_img = Image::new(ctx, "/boom.png").unwrap();
         animated_sprites.insert("explosion".to_string(), components::AnimatedSprite::new(explosion_img, 12, 16, true));

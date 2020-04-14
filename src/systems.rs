@@ -82,6 +82,7 @@ impl<'a> System<'a> for SpawnBulletSys {
         WriteStorage<'a, Velocity>,
         WriteStorage<'a, Bullet>,
         WriteStorage<'a, Sprite>,
+        WriteStorage<'a, Hitbox>,
         Entities<'a>,
         Read<'a, PlayerEntity>,
         Read<'a, SpriteSheets>,
@@ -95,6 +96,7 @@ impl<'a> System<'a> for SpawnBulletSys {
             mut vels,
             mut bullets,
             mut sprite_res,
+            mut hitboxes,
             entities,
             player_entity,
             spritesheets,
@@ -111,7 +113,7 @@ impl<'a> System<'a> for SpawnBulletSys {
                 player_data.bullet_type,
                 bullet_pos,
                 [0.0, -5.0 + player_vel.y.min(0.0)].into(),
-                true,
+                DamagesWho::Enemy,
             );
 
             let spritesheet = spritesheets.0.get("bullets").unwrap().clone();
@@ -119,9 +121,10 @@ impl<'a> System<'a> for SpawnBulletSys {
             entities
                 .build_entity()
                 .with(bullet.0, &mut positions)
-                .with(bullet.1, &mut vels)
-                .with(bullet.2, &mut bullets)
-                .with(Sprite::SpriteSheetInstance(spritesheet, bullet.3), &mut sprite_res)
+                .with(bullet.1, &mut hitboxes)
+                .with(bullet.2, &mut vels)
+                .with(bullet.3, &mut bullets)
+                .with(Sprite::SpriteSheetInstance(spritesheet, bullet.4), &mut sprite_res)
                 .build();
         }
     }
@@ -187,11 +190,10 @@ impl<'a> System<'a> for BulletCollSys {
     ) {
         let mut explosion_positions: Vec<Point> = Vec::new();
 
-        //TODO Bullet hitboxes
-        (&bullets, &positions, &entities)
+        (&bullets, &positions, &hitboxes, &entities)
             .join()
-            .for_each(|(bullet, pos, bullet_entity)| {
-                let bullet_rect = Rect::new(pos.0.x + 8.0, pos.0.y + 8.0 , 10.0, 10.0);
+            .for_each(|(bullet, pos, bullet_hitbox, bullet_entity)| {
+                let bullet_rect = Rect::new(pos.0.x + bullet_hitbox.0.x, pos.0.y + bullet_hitbox.0.y, bullet_hitbox.1, bullet_hitbox.2);
                 if !(-10.0..crate::SCREEN_WIDTH).contains(&pos.0.x) || 
                     !(-10.0..crate::SCREEN_HEIGHT).contains(&pos.0.y) {
                         entities.delete(bullet_entity).unwrap();
@@ -199,15 +201,15 @@ impl<'a> System<'a> for BulletCollSys {
                         (&mut hp_storage, &positions, &hitboxes, &entities)
                             .join()
                             .for_each(|(hp, collided_pos, hitbox, entity)| {
-                                if (bullet.friendly && entity != player_entity.0)
-                                    || (!bullet.friendly && entity == player_entity.0)
+                                if (bullet.damages_player() && entity == player_entity.0)
+                                    || (bullet.damages_enemy() && entity != player_entity.0)
                                         && hp.remaining > 0
                                 {
                                     let collidee_rect = Rect::new(
-                                        collided_pos.0.x,
-                                        collided_pos.0.y,
-                                        hitbox.0,
+                                        collided_pos.0.x + hitbox.0.x,
+                                        collided_pos.0.y + hitbox.0.y,
                                         hitbox.1,
+                                        hitbox.2,
                                     );
                                     if bullet_rect.overlaps(&collidee_rect) {
                                         if hp.remaining >= bullet.damage {
@@ -299,7 +301,7 @@ impl<'a> System<'a> for PlayerCollSys {
         let player_vel = velocities.get_mut(player_entity.0).unwrap();
         let mut player_hp = hp_storage.get(player_entity.0).unwrap().clone();
 
-        let player_rect = Rect::new(player_pos.x, player_pos.y, player_hitbox.0, player_hitbox.1);
+        let player_rect = Rect::new(player_pos.x + player_hitbox.0.x, player_pos.y + player_hitbox.0.y, player_hitbox.1, player_hitbox.2);
         (&mut hp_storage, &positions, &hitboxes, &entities, !&bullets)
             .join()
             .for_each(|(mut other_hp, pos, hbox, entity, _)| {
@@ -307,7 +309,7 @@ impl<'a> System<'a> for PlayerCollSys {
                     return;
                 }
 
-                let other_rect = Rect::new(pos.0.x, pos.0.y, hbox.0, hbox.1);
+                let other_rect = Rect::new(pos.0.x + hbox.0.x, pos.0.y + hbox.0.y, hbox.1, hbox.2);
                 if other_rect.overlaps(&player_rect) {
                     if let Some(enemy) = enemies.get(entity) {
                         let (damage_to_player, iframes) = match enemy.ty {
@@ -360,6 +362,7 @@ impl<'a> System<'a> for EnemyShootSys {
         WriteStorage<'a, Velocity>,
         WriteStorage<'a, Bullet>,
         WriteStorage<'a, Sprite>,
+        WriteStorage<'a, Hitbox>,
         Entities<'a>,
         Read<'a, SpriteSheets>,
         Read<'a, PlayerEntity>,
@@ -373,6 +376,7 @@ impl<'a> System<'a> for EnemyShootSys {
             mut vels,
             mut bullets,
             mut sprite_storage,
+            mut hitboxes,
             entities,
             spritesheets,
             player_entity,
@@ -422,14 +426,15 @@ impl<'a> System<'a> for EnemyShootSys {
                     vel
                 }
             };
-            let bullet_tuple = new_bullet(*bullet_type, *pos, vel, false);
+            let bullet_tuple = new_bullet(*bullet_type, *pos, vel, DamagesWho::Player);
             let spritesheet = spritesheets.0.get("bullets").unwrap().clone();
             entities
                 .build_entity()
                 .with(bullet_tuple.0, &mut positions)
-                .with(bullet_tuple.2, &mut bullets)
-                .with(bullet_tuple.1, &mut vels)
-                .with(Sprite::SpriteSheetInstance(spritesheet, bullet_tuple.3), &mut sprite_storage)
+                .with(bullet_tuple.1, &mut hitboxes)
+                .with(bullet_tuple.3, &mut bullets)
+                .with(bullet_tuple.2, &mut vels)
+                .with(Sprite::SpriteSheetInstance(spritesheet, bullet_tuple.4), &mut sprite_storage)
                 .build();
             });
     }
