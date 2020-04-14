@@ -309,7 +309,7 @@ impl<'a> System<'a> for PlayerCollSys {
         let player_pos = positions.get(player_entity.0).unwrap().0;
         let player_hitbox = hitboxes.get(player_entity.0).unwrap();
         let player_vel = velocities.get_mut(player_entity.0).unwrap();
-        let mut player_hp = hp_storage.get(player_entity.0).unwrap().clone();
+        let mut player_hp = *hp_storage.get(player_entity.0).unwrap();
 
         let player_rect = Rect::new(
             player_pos.x + player_hitbox.0.x,
@@ -398,7 +398,7 @@ impl<'a> System<'a> for EnemyShootSys {
         ): Self::SystemData,
     ) {
         let new_bullets: Vec<(Point, BulletType)> = (&positions, &mut enemies)
-            .join()
+            .par_join()
             .filter_map(|(pos, mut enemy)| {
                 if enemy.reload_timer != 0 {
                     enemy.reload_timer -= 1;
@@ -422,8 +422,7 @@ impl<'a> System<'a> for EnemyShootSys {
                         BulletType::TrackingBullet => 5.0,
                         _ => panic!("something has gone terribly wrong"),
                     };
-                    let vel = (player_pos - pos).normalize() * speed;
-                    vel
+                    (player_pos - pos).normalize() * speed
                 }
                 BulletType::PredictBullet => {
                     let bullet_speed = 10.0f32;
@@ -435,8 +434,7 @@ impl<'a> System<'a> for EnemyShootSys {
                     let player_projected_pos = player_pos + player_vel * time_to_hit;
                     let direction = (player_projected_pos - pos).normalize();
 
-                    let vel = direction * bullet_speed;
-                    vel
+                    direction * bullet_speed
                 }
             };
             let bullet_tuple = new_bullet(
@@ -473,7 +471,7 @@ impl<'a> System<'a> for BulletTrackingSys {
     fn run(&mut self, (mut vels, positions, bullets, player_entity): Self::SystemData) {
         let player_pos = positions.get(player_entity.0).unwrap().0;
         (&mut vels, &positions, &bullets)
-            .join()
+            .par_join()
             .filter(|(_, _, bullet)| bullet.ty == BulletType::TrackingBullet)
             .for_each(|(vel, pos, _)| {
                 let direction = (player_pos - pos.0).normalize();
@@ -502,7 +500,7 @@ impl<'a> System<'a> for WaveCalcSys {
         };
         let mut difficulty = 0u16;
 
-        fn calc_diff(ty: &EnemyType) -> u16 {
+        fn calc_diff(ty: EnemyType) -> u16 {
             match ty {
                 EnemyType::BasicEnemy => 1,
                 EnemyType::AimEnemy => 2,
@@ -520,7 +518,7 @@ impl<'a> System<'a> for WaveCalcSys {
             ]
             .iter()
             .filter_map(|enemy_ty| {
-                let diff = calc_diff(enemy_ty);
+                let diff = calc_diff(*enemy_ty);
                 if diff < (difficulty as f32 / 1.5).round() as u16 {
                     Some((enemy_ty, diff))
                 } else {

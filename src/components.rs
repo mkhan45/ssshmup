@@ -117,11 +117,11 @@ pub struct Bullet {
 }
 
 impl Bullet {
-    pub fn damages_player(&self) -> bool {
+    pub fn damages_player(self) -> bool {
         self.damages_who == DamagesWho::Both || self.damages_who == DamagesWho::Player
     }
 
-    pub fn damages_enemy(&self) -> bool {
+    pub fn damages_enemy(self) -> bool {
         self.damages_who == DamagesWho::Both || self.damages_who == DamagesWho::Enemy
     }
 }
@@ -224,7 +224,7 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
         },
         HP::new(hp),
         Hitbox([21.0, 32.0].into(), size.0, size.1),
-        sprite_index
+        sprite_index,
     )
 }
 
@@ -276,8 +276,8 @@ pub type PlayerTuple = (Position, Velocity, HP, Sprite, Player, Hitbox);
 pub fn new_player(sprite: Image, hp: u32) -> PlayerTuple {
     let pos = Position(
         [
-        crate::SCREEN_WIDTH / 2.0 - 25.0,
-        crate::SCREEN_HEIGHT * 0.75,
+            crate::SCREEN_WIDTH / 2.0 - 25.0,
+            crate::SCREEN_HEIGHT * 0.75,
         ]
         .into(),
     );
