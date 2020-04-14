@@ -137,13 +137,16 @@ pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, damages_who: DamagesW
 
     let sprite_index = match ty {
         BulletType::BasicBullet => 0,
-        BulletType::AimedBullet => 0,
-        BulletType::PredictBullet => 0,
-        BulletType::TrackingBullet => 1,
+        BulletType::AimedBullet => 1,
+        BulletType::PredictBullet => 2,
+        BulletType::TrackingBullet => 3,
     };
 
     let (offset, width, height) = match ty {
-        BulletType::BasicBullet | BulletType::AimedBullet | BulletType::PredictBullet | BulletType::TrackingBullet=> (Point::new(5.0, 5.0), 15.0, 15.0),
+        BulletType::BasicBullet
+        | BulletType::AimedBullet
+        | BulletType::PredictBullet
+        | BulletType::TrackingBullet => (Point::new(5.0, 5.0), 15.0, 15.0),
     };
 
     let bullet = Bullet {
@@ -153,10 +156,16 @@ pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, damages_who: DamagesW
     };
 
     let pos: Point = [pos.x, pos.y - 16.0].into();
-    (Position(pos), Hitbox(offset, width, height), Velocity(vel), bullet, sprite_index)
+    (
+        Position(pos),
+        Hitbox(offset, width, height),
+        Velocity(vel),
+        bullet,
+        sprite_index,
+    )
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum EnemyType {
     BasicEnemy,
     AimEnemy,
@@ -181,7 +190,7 @@ pub struct Enemy {
     pub reload_speed: u32,
 }
 
-pub type EnemyTuple = (Position, Velocity, Enemy, HP, Hitbox);
+pub type EnemyTuple = (Position, Velocity, Enemy, HP, Hitbox, String);
 pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTuple {
     let pos = Position(pos);
     let (hp, size, bullet_type, reload_speed) = match ty {
@@ -196,6 +205,10 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
         _ => todo!(),
     };
 
+    let sprite_str = match ty {
+        _ => "enemy1",
+    };
+
     (
         pos,
         Velocity(vel),
@@ -208,21 +221,14 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
         },
         HP::new(hp),
         Hitbox([0.0, 0.0].into(), size.0, size.1),
+        sprite_str.to_owned(),
     )
 }
 
 pub fn create_enemy(world: &mut World, enemy: EnemyTuple) -> Entity {
     let sprite = {
         let sprites = &world.fetch::<Sprites>().0;
-        sprites
-            .get(match enemy.2.ty {
-                EnemyType::BasicEnemy => "enemy1",
-                EnemyType::AimEnemy => "enemy1",
-                EnemyType::PredictEnemy => "enemy1",
-                EnemyType::TrackingEnemy => "enemy1",
-            })
-        .unwrap()
-            .clone()
+        sprites.get(&enemy.5).unwrap().clone()
     };
 
     world
@@ -267,8 +273,8 @@ pub type PlayerTuple = (Position, Velocity, HP, Sprite, Player, Hitbox);
 pub fn new_player(sprite: Image, hp: u32) -> PlayerTuple {
     let pos = Position(
         [
-        crate::SCREEN_WIDTH / 2.0 - 25.0,
-        crate::SCREEN_HEIGHT * 0.75,
+            crate::SCREEN_WIDTH / 2.0 - 25.0,
+            crate::SCREEN_HEIGHT * 0.75,
         ]
         .into(),
     );
@@ -356,3 +362,17 @@ pub struct BulletSpriteBatch(pub SpriteBatch);
 
 #[derive(Clone, Default)]
 pub struct AnimatedSprites(pub HashMap<String, AnimatedSprite>);
+
+#[derive(Clone, Default)]
+pub struct CurrentWave(pub u8);
+
+#[derive(Copy, Clone)]
+pub struct FramesToNextWave(pub u16);
+impl Default for FramesToNextWave {
+    fn default() -> Self {
+        FramesToNextWave(120)
+    }
+}
+
+#[derive(Clone, Default)]
+pub struct QueuedEnemies(pub Vec<(Point, EnemyType)>);

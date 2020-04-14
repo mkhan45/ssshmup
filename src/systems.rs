@@ -124,7 +124,10 @@ impl<'a> System<'a> for SpawnBulletSys {
                 .with(bullet.1, &mut hitboxes)
                 .with(bullet.2, &mut vels)
                 .with(bullet.3, &mut bullets)
-                .with(Sprite::SpriteSheetInstance(spritesheet, bullet.4), &mut sprite_res)
+                .with(
+                    Sprite::SpriteSheetInstance(spritesheet, bullet.4),
+                    &mut sprite_res,
+                )
                 .build();
         }
     }
@@ -193,46 +196,54 @@ impl<'a> System<'a> for BulletCollSys {
         (&bullets, &positions, &hitboxes, &entities)
             .join()
             .for_each(|(bullet, pos, bullet_hitbox, bullet_entity)| {
-                let bullet_rect = Rect::new(pos.0.x + bullet_hitbox.0.x, pos.0.y + bullet_hitbox.0.y, bullet_hitbox.1, bullet_hitbox.2);
-                if !(-10.0..crate::SCREEN_WIDTH).contains(&pos.0.x) || 
-                    !(-10.0..crate::SCREEN_HEIGHT).contains(&pos.0.y) {
-                        entities.delete(bullet_entity).unwrap();
-                    } else {
-                        (&mut hp_storage, &positions, &hitboxes, &entities)
-                            .join()
-                            .for_each(|(hp, collided_pos, hitbox, entity)| {
-                                if (bullet.damages_player() && entity == player_entity.0)
-                                    || (bullet.damages_enemy() && entity != player_entity.0)
-                                        && hp.remaining > 0
-                                {
-                                    let collidee_rect = Rect::new(
-                                        collided_pos.0.x + hitbox.0.x,
-                                        collided_pos.0.y + hitbox.0.y,
-                                        hitbox.1,
-                                        hitbox.2,
-                                    );
-                                    if bullet_rect.overlaps(&collidee_rect) {
-                                        if hp.remaining >= bullet.damage {
-                                            hp.remaining -= bullet.damage;
-                                        } else {
-                                            hp.remaining = 0;
-                                        }
-                                        explosion_positions.push(pos.0 + Vector::new(-20.0, -20.0));
-                                        entities.delete(bullet_entity).unwrap();
+                let bullet_rect = Rect::new(
+                    pos.0.x + bullet_hitbox.0.x,
+                    pos.0.y + bullet_hitbox.0.y,
+                    bullet_hitbox.1,
+                    bullet_hitbox.2,
+                );
+                if !(-10.0..crate::SCREEN_WIDTH).contains(&pos.0.x)
+                    || !(-10.0..crate::SCREEN_HEIGHT).contains(&pos.0.y)
+                {
+                    entities.delete(bullet_entity).unwrap();
+                } else {
+                    (&mut hp_storage, &positions, &hitboxes, &entities)
+                        .join()
+                        .for_each(|(hp, collided_pos, hitbox, entity)| {
+                            if (bullet.damages_player() && entity == player_entity.0)
+                                || (bullet.damages_enemy() && entity != player_entity.0)
+                                    && hp.remaining > 0
+                            {
+                                let collidee_rect = Rect::new(
+                                    collided_pos.0.x + hitbox.0.x,
+                                    collided_pos.0.y + hitbox.0.y,
+                                    hitbox.1,
+                                    hitbox.2,
+                                );
+                                if bullet_rect.overlaps(&collidee_rect) {
+                                    if hp.remaining >= bullet.damage {
+                                        hp.remaining -= bullet.damage;
+                                    } else {
+                                        hp.remaining = 0;
                                     }
+                                    explosion_positions.push(pos.0 + Vector::new(-20.0, -20.0));
+                                    entities.delete(bullet_entity).unwrap();
                                 }
-                            });
-                    }
+                            }
+                        });
+                }
             });
 
         explosion_positions.iter().for_each(|pos| {
             entities
                 .build_entity()
                 .with(Position(*pos), &mut positions)
-                .with(animated_sprites.0.get("explosion").unwrap().clone(), &mut animated_sprite_storage,
+                .with(
+                    animated_sprites.0.get("explosion").unwrap().clone(),
+                    &mut animated_sprite_storage,
                 )
                 .build();
-            });
+        });
     }
 }
 
@@ -258,8 +269,7 @@ impl<'a> System<'a> for AnimationSys {
             .join()
             .for_each(|(animated_sprite, entity)| {
                 animated_sprite.current_frame += 1;
-                if animated_sprite.current_frame == animated_sprite.num_frames
-                {
+                if animated_sprite.current_frame == animated_sprite.num_frames {
                     if animated_sprite.temporary {
                         entities.delete(entity).unwrap();
                     } else {
@@ -301,7 +311,12 @@ impl<'a> System<'a> for PlayerCollSys {
         let player_vel = velocities.get_mut(player_entity.0).unwrap();
         let mut player_hp = hp_storage.get(player_entity.0).unwrap().clone();
 
-        let player_rect = Rect::new(player_pos.x + player_hitbox.0.x, player_pos.y + player_hitbox.0.y, player_hitbox.1, player_hitbox.2);
+        let player_rect = Rect::new(
+            player_pos.x + player_hitbox.0.x,
+            player_pos.y + player_hitbox.0.y,
+            player_hitbox.1,
+            player_hitbox.2,
+        );
         (&mut hp_storage, &positions, &hitboxes, &entities, !&bullets)
             .join()
             .for_each(|(mut other_hp, pos, hbox, entity, _)| {
@@ -393,16 +408,14 @@ impl<'a> System<'a> for EnemyShootSys {
                     Some((pos.0, enemy.bullet_type))
                 }
             })
-        .collect();
+            .collect();
 
         let player_pos = positions.get(player_entity.0).unwrap().0;
         let player_vel = vels.get(player_entity.0).unwrap().0;
 
         new_bullets.iter().for_each(|(pos, bullet_type)| {
             let vel = match bullet_type {
-                BulletType::BasicBullet => {
-                    [0.0, 8.0].into()
-                }
+                BulletType::BasicBullet => [0.0, 8.0].into(),
                 BulletType::AimedBullet | BulletType::TrackingBullet => {
                     let speed = match bullet_type {
                         BulletType::AimedBullet => 9.0,
@@ -419,14 +432,19 @@ impl<'a> System<'a> for EnemyShootSys {
                     let dist_to_player = player_vec.norm();
                     let time_to_hit = dist_to_player / bullet_speed;
 
-                    let player_projected_pos = player_pos + player_vel * time_to_hit; 
+                    let player_projected_pos = player_pos + player_vel * time_to_hit;
                     let direction = (player_projected_pos - pos).normalize();
 
                     let vel = direction * bullet_speed;
                     vel
                 }
             };
-            let bullet_tuple = new_bullet(*bullet_type, *pos, vel, DamagesWho::Player);
+            let bullet_tuple = new_bullet(
+                *bullet_type,
+                *pos + Vector::new(16.0, 0.0),
+                vel,
+                DamagesWho::Player,
+            );
             let spritesheet = spritesheets.0.get("bullets").unwrap().clone();
             entities
                 .build_entity()
@@ -434,22 +452,99 @@ impl<'a> System<'a> for EnemyShootSys {
                 .with(bullet_tuple.1, &mut hitboxes)
                 .with(bullet_tuple.3, &mut bullets)
                 .with(bullet_tuple.2, &mut vels)
-                .with(Sprite::SpriteSheetInstance(spritesheet, bullet_tuple.4), &mut sprite_storage)
+                .with(
+                    Sprite::SpriteSheetInstance(spritesheet, bullet_tuple.4),
+                    &mut sprite_storage,
+                )
                 .build();
-            });
+        });
     }
 }
 
 pub struct BulletTrackingSys;
 impl<'a> System<'a> for BulletTrackingSys {
-    type SystemData = (WriteStorage<'a, Velocity>, ReadStorage<'a, Position>, ReadStorage<'a, Bullet>, Read<'a, PlayerEntity>);
+    type SystemData = (
+        WriteStorage<'a, Velocity>,
+        ReadStorage<'a, Position>,
+        ReadStorage<'a, Bullet>,
+        Read<'a, PlayerEntity>,
+    );
 
     fn run(&mut self, (mut vels, positions, bullets, player_entity): Self::SystemData) {
         let player_pos = positions.get(player_entity.0).unwrap().0;
-        (&mut vels, &positions, &bullets).join().filter(|(_, _, bullet)| bullet.ty == BulletType::TrackingBullet).for_each(|(vel, pos, _)|{
-            let direction = (player_pos - pos.0).normalize();
-            let target_vel = direction * 8.0;
-            vel.0 += (target_vel - vel.0) * 0.02;
-        });
+        (&mut vels, &positions, &bullets)
+            .join()
+            .filter(|(_, _, bullet)| bullet.ty == BulletType::TrackingBullet)
+            .for_each(|(vel, pos, _)| {
+                let direction = (player_pos - pos.0).normalize();
+                let target_vel = direction * 8.0;
+                vel.0 += (target_vel - vel.0) * 0.02;
+            });
+    }
+}
+
+#[derive(Default)]
+pub struct WaveCalcSys;
+impl<'a> System<'a> for WaveCalcSys {
+    type SystemData = (Write<'a, QueuedEnemies>, Read<'a, CurrentWave>);
+
+    fn run(&mut self, (mut queued_enemies, current_wave): Self::SystemData) {
+        let enemies = &mut queued_enemies.0;
+        enemies.clear();
+
+        let mut new_enemies = Vec::new();
+        let target_difficulty = match current_wave.0 {
+            1 => 5,
+            2 => 10,
+            3 => 13,
+            4 => 18,
+            _ => current_wave.0 as u16 * 5 + 5,
+        };
+        let mut difficulty = 0u16;
+
+        fn calc_diff(ty: &EnemyType) -> u16 {
+            match ty {
+                EnemyType::BasicEnemy => 2,
+                EnemyType::AimEnemy => 2,
+                EnemyType::PredictEnemy => 3,
+                EnemyType::TrackingEnemy => 5,
+            }
+        }
+
+        while difficulty < target_difficulty {
+            let new_enemy = [
+                EnemyType::BasicEnemy,
+                EnemyType::AimEnemy,
+                EnemyType::PredictEnemy,
+                EnemyType::TrackingEnemy,
+            ]
+            .iter()
+            .filter_map(|enemy_ty| {
+                let diff = calc_diff(enemy_ty);
+                if diff < (difficulty as f32 / 1.5).round() as u16 {
+                    Some((enemy_ty, diff))
+                } else {
+                    None
+                }
+            })
+            .max_by_key(|(_, diff)| *diff)
+            .unwrap_or((&EnemyType::BasicEnemy, 1));
+            difficulty += new_enemy.1 * 2;
+            new_enemies.push(new_enemy);
+            new_enemies.push(new_enemy);
+        }
+
+        let mut new_enemies = new_enemies
+            .iter()
+            .enumerate()
+            .map(|(i, (ty, _))| {
+                (
+                    [(i % 4) as f32 * 90.0, 20.0 + 100.0 * (i / 4) as f32].into(),
+                    **ty,
+                )
+            })
+            .collect();
+
+        enemies.append(&mut new_enemies);
     }
 }

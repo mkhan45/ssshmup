@@ -41,6 +41,77 @@ impl EventHandler for GameState<'_, '_> {
         }
 
         {
+            let num_enemies = {
+                let enemies = self.world.read_storage::<Enemy>();
+                enemies.join().count()
+            };
+            if num_enemies == 0 {
+                let frames_to_next_wave = &mut self.world.fetch_mut::<FramesToNextWave>().0;
+                if *frames_to_next_wave != 0 {
+                    *frames_to_next_wave -= 1;
+                } else {
+                    {
+                        let current_wave = &mut self.world.fetch_mut::<CurrentWave>().0;
+                        *current_wave += 1;
+                    }
+
+                    {
+                        let mut wave_calc_sys = systems::WaveCalcSys::default();
+                        wave_calc_sys.run_now(&self.world);
+                    }
+
+                    let queued_enemies = &self.world.fetch::<QueuedEnemies>().0;
+                    let mut positions = self.world.write_storage::<Position>();
+                    let mut vels = self.world.write_storage::<Velocity>();
+                    let mut enemies = self.world.write_storage::<Enemy>();
+                    let mut hp_storage = self.world.write_storage::<HP>();
+                    let mut hitboxes = self.world.write_storage::<Hitbox>();
+                    let mut sprites = self.world.write_storage::<Sprite>();
+
+                    queued_enemies.iter().for_each(|(pos, et)| {
+                        let enemy = new_enemy(*et, *pos, MovementType::HLine(0.0..0.0, 0.0));
+                        let sprite = self
+                            .world
+                            .fetch::<Sprites>()
+                            .0
+                            .get(&enemy.5)
+                            .unwrap()
+                            .clone();
+
+                        self.world
+                            .entities()
+                            .build_entity()
+                            .with(enemy.0, &mut positions)
+                            .with(enemy.1, &mut vels)
+                            .with(enemy.2.clone(), &mut enemies)
+                            .with(enemy.3, &mut hp_storage)
+                            .with(enemy.4, &mut hitboxes)
+                            .with(Sprite::Img(sprite.clone()), &mut sprites)
+                            .build();
+
+                        let pos_2 =
+                            Point::new(crate::SCREEN_WIDTH - 60.0 - (enemy.0).0.x, (enemy.0).0.y);
+
+                        self.world
+                            .entities()
+                            .build_entity()
+                            .with(Position(pos_2), &mut positions)
+                            .with(enemy.1, &mut vels)
+                            .with(enemy.2, &mut enemies)
+                            .with(enemy.3, &mut hp_storage)
+                            .with(enemy.4, &mut hitboxes)
+                            .with(Sprite::Img(sprite), &mut sprites)
+                            .build();
+                    });
+                }
+            } else {
+                if self.world.fetch::<FramesToNextWave>().0 == 0 {
+                    self.world.insert(FramesToNextWave::default());
+                }
+            }
+        }
+
+        {
             let player_entity = self.world.fetch::<PlayerEntity>().0;
             let velocities = &mut self.world.write_storage::<Velocity>();
             let positions = &mut self.world.write_storage::<Position>();
@@ -81,9 +152,7 @@ impl EventHandler for GameState<'_, '_> {
         {
             let positions = self.world.read_storage::<Position>();
             let colorects = self.world.read_storage::<ColorRect>();
-            let hitboxes = self.world.read_storage::<Hitbox>();
             let sprites = self.world.read_storage::<Sprite>();
-            let bullets = self.world.read_storage::<Bullet>();
             let stars = self.world.read_storage::<Star>();
             let hp_storage = self.world.read_storage::<HP>();
             let entities = self.world.entities();
@@ -117,21 +186,24 @@ impl EventHandler for GameState<'_, '_> {
                                 ctx,
                                 img,
                                 graphics::DrawParam::new()
-                                .scale([3.0, 3.0])
-                                .dest(pos.0)
-                                .color(draw_color),
+                                    .scale([3.0, 3.0])
+                                    .dest(pos.0)
+                                    .color(draw_color),
                             )
-                                .unwrap();
-                            },
-                            Sprite::SpriteSheetInstance(spritesheet, index) => {
-                                let frame_width = 1.0 / spritesheet.lock().unwrap().width as f32;
-                                let src_rect = Rect::new(
-                                    frame_width * *index as f32,
-                                    0.0,
-                                    frame_width,
-                                    1.0);
-                                spritesheet.lock().unwrap().batch.add(DrawParam::new().src(src_rect).scale([3.0, 3.0]).dest(pos.0).color(draw_color));
-                            },
+                            .unwrap();
+                        }
+                        Sprite::SpriteSheetInstance(spritesheet, index) => {
+                            let frame_width = 1.0 / spritesheet.lock().unwrap().width as f32;
+                            let src_rect =
+                                Rect::new(frame_width * *index as f32, 0.0, frame_width, 1.0);
+                            spritesheet.lock().unwrap().batch.add(
+                                DrawParam::new()
+                                    .src(src_rect)
+                                    .scale([3.0, 3.0])
+                                    .dest(pos.0)
+                                    .color(draw_color),
+                            );
+                        }
                     }
                 });
 
@@ -148,15 +220,26 @@ impl EventHandler for GameState<'_, '_> {
                     graphics::draw(
                         ctx,
                         &animated_sprite.spritesheet,
-                        graphics::DrawParam::new().src(src_rect).scale([3.5, 3.5]).dest(pos.0),
+                        graphics::DrawParam::new()
+                            .src(src_rect)
+                            .scale([3.5, 3.5])
+                            .dest(pos.0),
                     )
-                        .unwrap();
-                    });
+                    .unwrap();
+                });
 
-            // (&positions, &hitboxes).join().for_each(|(pos, hitbox)| {
-            //     let rect = Rect::new(pos.0.x + hitbox.0.x, pos.0.y + hitbox.0.y, hitbox.1, hitbox.2);
-            //     builder.rectangle(DrawMode::stroke(2.5), rect, Color::new(1.0, 0.0, 0.0, 1.0));
-            // });
+            if cfg!(feature = "draw_hitboxes") {
+                let hitboxes = self.world.read_storage::<Hitbox>();
+                (&positions, &hitboxes).join().for_each(|(pos, hitbox)| {
+                    let rect = Rect::new(
+                        pos.0.x + hitbox.0.x,
+                        pos.0.y + hitbox.0.y,
+                        hitbox.1,
+                        hitbox.2,
+                    );
+                    builder.rectangle(DrawMode::stroke(2.5), rect, Color::new(1.0, 0.0, 0.0, 1.0));
+                });
+            }
 
             graphics::draw(ctx, &bullet_spritebatch.0, graphics::DrawParam::new())?;
             bullet_spritebatch.0.clear();
@@ -164,7 +247,7 @@ impl EventHandler for GameState<'_, '_> {
 
         {
             let spritesheets = self.world.get_mut::<SpriteSheets>().unwrap();
-            spritesheets.0.values_mut().for_each(|spritesheet|{
+            spritesheets.0.values_mut().for_each(|spritesheet| {
                 let mut spritesheet = spritesheet.lock().unwrap();
                 graphics::draw(ctx, &spritesheet.batch, graphics::DrawParam::new()).unwrap();
                 spritesheet.batch.clear();

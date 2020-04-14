@@ -18,8 +18,8 @@ fn main() -> GameResult {
         .window_setup(ggez::conf::WindowSetup::default().title("Tetrs"))
         .window_mode(
             ggez::conf::WindowMode::default()
-            .dimensions(SCREEN_WIDTH, SCREEN_HEIGHT)
-            .resizable(false),
+                .dimensions(SCREEN_WIDTH, SCREEN_HEIGHT)
+                .resizable(false),
         )
         .build()
         .expect("error building context");
@@ -48,7 +48,7 @@ fn main() -> GameResult {
     });
 
     let player_sprite = ggez::graphics::Image::new(ctx, "/player.png").unwrap();
-    let player = components::new_player(player_sprite, 3);
+    let player = components::new_player(player_sprite, 300);
     let player = components::create_player(&mut world, player);
     world.insert(PlayerEntity(player));
 
@@ -65,50 +65,60 @@ fn main() -> GameResult {
 
         let bullet_spritesheet = Image::new(ctx, "/bullet_sheet.png");
         let bullet_spritebatch = SpriteBatch::new(bullet_spritesheet.unwrap());
-        spritesheets.insert("bullets".to_string(), Arc::new(Mutex::new(components::SpriteSheet{ width: 4, batch: bullet_spritebatch })));
+        spritesheets.insert(
+            "bullets".to_string(),
+            Arc::new(Mutex::new(components::SpriteSheet {
+                width: 4,
+                batch: bullet_spritebatch,
+            })),
+        );
 
         let explosion_img = Image::new(ctx, "/boom.png").unwrap();
-        animated_sprites.insert("explosion".to_string(), components::AnimatedSprite::new(explosion_img, 12, 16, true));
+        animated_sprites.insert(
+            "explosion".to_string(),
+            components::AnimatedSprite::new(explosion_img, 12, 16, true),
+        );
     }
     world.insert(components::BulletSpriteBatch(SpriteBatch::new(
-                sprites.get("bullet1").unwrap().clone(),
+        sprites.get("bullet1").unwrap().clone(),
     )));
     world.insert(components::Sprites(sprites));
     world.insert(components::AnimatedSprites(animated_sprites));
     world.insert(components::SpriteSheets(spritesheets));
+    world.insert(components::CurrentWave(0));
+    world.insert(components::QueuedEnemies(Vec::new()));
+    world.insert(components::FramesToNextWave(0));
 
+    // (0..9).for_each(|i| {
+    //     let min_x = i as f32 * 60.0;
+    //     let (mut et1, et2) = if i % 2 == 0 {
+    //         (
+    //             components::EnemyType::BasicEnemy,
+    //             components::EnemyType::AimEnemy,
+    //         )
+    //     } else {
+    //         (
+    //             components::EnemyType::PredictEnemy,
+    //             components::EnemyType::BasicEnemy,
+    //         )
+    //     };
+    //     if i == 0 || i == 8 {
+    //         et1 = components::EnemyType::TrackingEnemy;
+    //     }
+    //     let enemy = components::new_enemy(
+    //         et1,
+    //         [min_x, 100.0].into(),
+    //         components::MovementType::HLine(min_x..min_x + 175.0, 1.25),
+    //     );
+    //     components::create_enemy(&mut world, enemy);
 
-
-    (0..9).for_each(|i| {
-        let min_x = i as f32 * 60.0;
-        let (mut et1, et2) = if i % 2 == 0 {
-            (
-                components::EnemyType::BasicEnemy,
-                components::EnemyType::AimEnemy,
-            )
-        } else {
-            (
-                components::EnemyType::PredictEnemy,
-                components::EnemyType::BasicEnemy,
-            )
-        };
-        if i == 0 || i == 8 {
-            et1 = components::EnemyType::TrackingEnemy;
-        }
-        let enemy = components::new_enemy(
-            et1,
-            [min_x, 100.0].into(),
-            components::MovementType::HLine(min_x..min_x + 175.0, 1.25),
-        );
-        components::create_enemy(&mut world, enemy);
-
-        let enemy = components::new_enemy(
-            et2,
-            [min_x, 10.0].into(),
-            components::MovementType::HLine(min_x..min_x + 175.0, 1.25),
-        );
-        components::create_enemy(&mut world, enemy);
-    });
+    //     let enemy = components::new_enemy(
+    //         et2,
+    //         [min_x, 10.0].into(),
+    //         components::MovementType::HLine(min_x..min_x + 175.0, 1.25),
+    //     );
+    //     components::create_enemy(&mut world, enemy);
+    // });
 
     let mut dispatcher = DispatcherBuilder::new()
         .with(systems::EnemyMoveSys, "enemy_move_sys", &[])
@@ -141,5 +151,4 @@ fn main() -> GameResult {
     let mut game_state = game_state::GameState::new(world, dispatcher);
 
     event::run(ctx, event_loop, &mut game_state)
-
 }
