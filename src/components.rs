@@ -190,7 +190,7 @@ pub struct Enemy {
     pub reload_speed: u32,
 }
 
-pub type EnemyTuple = (Position, Velocity, Enemy, HP, Hitbox, String);
+pub type EnemyTuple = (Position, Velocity, Enemy, HP, Hitbox, u8);
 pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTuple {
     let pos = Position(pos);
     let (hp, size, bullet_type, reload_speed) = match ty {
@@ -205,8 +205,11 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
         _ => todo!(),
     };
 
-    let sprite_str = match ty {
-        _ => "enemy1",
+    let sprite_index = match ty {
+        EnemyType::BasicEnemy => 0,
+        EnemyType::AimEnemy => 1,
+        EnemyType::PredictEnemy => 2,
+        EnemyType::TrackingEnemy => 3,
     };
 
     (
@@ -220,15 +223,15 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
             reload_speed,
         },
         HP::new(hp),
-        Hitbox([0.0, 0.0].into(), size.0, size.1),
-        sprite_str.to_owned(),
+        Hitbox([21.0, 32.0].into(), size.0, size.1),
+        sprite_index
     )
 }
 
 pub fn create_enemy(world: &mut World, enemy: EnemyTuple) -> Entity {
-    let sprite = {
-        let sprites = &world.fetch::<Sprites>().0;
-        sprites.get(&enemy.5).unwrap().clone()
+    let spritesheet = {
+        let spritesheets = world.fetch::<SpriteSheets>();
+        spritesheets.0.get("enemies").unwrap().clone()
     };
 
     world
@@ -238,7 +241,7 @@ pub fn create_enemy(world: &mut World, enemy: EnemyTuple) -> Entity {
         .with(enemy.2)
         .with(enemy.3)
         .with(enemy.4)
-        .with(Sprite::Img(sprite))
+        .with(Sprite::SpriteSheetInstance(spritesheet, enemy.5))
         .build()
 }
 
@@ -273,8 +276,8 @@ pub type PlayerTuple = (Position, Velocity, HP, Sprite, Player, Hitbox);
 pub fn new_player(sprite: Image, hp: u32) -> PlayerTuple {
     let pos = Position(
         [
-            crate::SCREEN_WIDTH / 2.0 - 25.0,
-            crate::SCREEN_HEIGHT * 0.75,
+        crate::SCREEN_WIDTH / 2.0 - 25.0,
+        crate::SCREEN_HEIGHT * 0.75,
         ]
         .into(),
     );

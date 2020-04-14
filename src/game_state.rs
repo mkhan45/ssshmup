@@ -67,16 +67,16 @@ impl EventHandler for GameState<'_, '_> {
                     let mut hp_storage = self.world.write_storage::<HP>();
                     let mut hitboxes = self.world.write_storage::<Hitbox>();
                     let mut sprites = self.world.write_storage::<Sprite>();
+                    let spritesheets = &self.world.fetch::<SpriteSheets>().0;
+                    let spritesheet = spritesheets.get("enemies").unwrap().clone();
+
+                    {
+                        let player_hp = hp_storage.get_mut(self.world.fetch::<PlayerEntity>().0).unwrap();
+                        player_hp.remaining += 1;
+                    }
 
                     queued_enemies.iter().for_each(|(pos, et)| {
                         let enemy = new_enemy(*et, *pos, MovementType::HLine(0.0..0.0, 0.0));
-                        let sprite = self
-                            .world
-                            .fetch::<Sprites>()
-                            .0
-                            .get(&enemy.5)
-                            .unwrap()
-                            .clone();
 
                         self.world
                             .entities()
@@ -86,11 +86,11 @@ impl EventHandler for GameState<'_, '_> {
                             .with(enemy.2.clone(), &mut enemies)
                             .with(enemy.3, &mut hp_storage)
                             .with(enemy.4, &mut hitboxes)
-                            .with(Sprite::Img(sprite.clone()), &mut sprites)
+                            .with(Sprite::SpriteSheetInstance(spritesheet.clone(), enemy.5), &mut sprites)
                             .build();
 
                         let pos_2 =
-                            Point::new(crate::SCREEN_WIDTH - 60.0 - (enemy.0).0.x, (enemy.0).0.y);
+                            Point::new(crate::SCREEN_WIDTH - 90.0 - (enemy.0).0.x, (enemy.0).0.y);
 
                         self.world
                             .entities()
@@ -100,9 +100,9 @@ impl EventHandler for GameState<'_, '_> {
                             .with(enemy.2, &mut enemies)
                             .with(enemy.3, &mut hp_storage)
                             .with(enemy.4, &mut hitboxes)
-                            .with(Sprite::Img(sprite), &mut sprites)
+                            .with(Sprite::SpriteSheetInstance(spritesheet.clone(), enemy.5), &mut sprites)
                             .build();
-                    });
+                        });
                 }
             } else {
                 if self.world.fetch::<FramesToNextWave>().0 == 0 {
@@ -186,22 +186,22 @@ impl EventHandler for GameState<'_, '_> {
                                 ctx,
                                 img,
                                 graphics::DrawParam::new()
-                                    .scale([3.0, 3.0])
-                                    .dest(pos.0)
-                                    .color(draw_color),
+                                .scale([3.0, 3.0])
+                                .dest(pos.0)
+                                .color(draw_color),
                             )
-                            .unwrap();
-                        }
+                                .unwrap();
+                            }
                         Sprite::SpriteSheetInstance(spritesheet, index) => {
                             let frame_width = 1.0 / spritesheet.lock().unwrap().width as f32;
                             let src_rect =
                                 Rect::new(frame_width * *index as f32, 0.0, frame_width, 1.0);
                             spritesheet.lock().unwrap().batch.add(
                                 DrawParam::new()
-                                    .src(src_rect)
-                                    .scale([3.0, 3.0])
-                                    .dest(pos.0)
-                                    .color(draw_color),
+                                .src(src_rect)
+                                .scale([3.0, 3.0])
+                                .dest(pos.0)
+                                .color(draw_color),
                             );
                         }
                     }
@@ -221,12 +221,12 @@ impl EventHandler for GameState<'_, '_> {
                         ctx,
                         &animated_sprite.spritesheet,
                         graphics::DrawParam::new()
-                            .src(src_rect)
-                            .scale([3.5, 3.5])
-                            .dest(pos.0),
+                        .src(src_rect)
+                        .scale([3.5, 3.5])
+                        .dest(pos.0),
                     )
-                    .unwrap();
-                });
+                        .unwrap();
+                    });
 
             if cfg!(feature = "draw_hitboxes") {
                 let hitboxes = self.world.read_storage::<Hitbox>();

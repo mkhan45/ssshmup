@@ -504,7 +504,7 @@ impl<'a> System<'a> for WaveCalcSys {
 
         fn calc_diff(ty: &EnemyType) -> u16 {
             match ty {
-                EnemyType::BasicEnemy => 2,
+                EnemyType::BasicEnemy => 1,
                 EnemyType::AimEnemy => 2,
                 EnemyType::PredictEnemy => 3,
                 EnemyType::TrackingEnemy => 5,

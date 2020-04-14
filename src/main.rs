@@ -48,7 +48,7 @@ fn main() -> GameResult {
     });
 
     let player_sprite = ggez::graphics::Image::new(ctx, "/player.png").unwrap();
-    let player = components::new_player(player_sprite, 300);
+    let player = components::new_player(player_sprite, 5);
     let player = components::create_player(&mut world, player);
     world.insert(PlayerEntity(player));
 
@@ -70,6 +70,16 @@ fn main() -> GameResult {
             Arc::new(Mutex::new(components::SpriteSheet {
                 width: 4,
                 batch: bullet_spritebatch,
+            })),
+        );
+
+        let enemy_spritesheet = Image::new(ctx, "/enemy_sheet.png");
+        let enemy_spritebatch = SpriteBatch::new(enemy_spritesheet.unwrap());
+        spritesheets.insert(
+            "enemies".to_string(),
+            Arc::new(Mutex::new(components::SpriteSheet {
+                width: 4,
+                batch: enemy_spritebatch,
             })),
         );
 
