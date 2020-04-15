@@ -9,6 +9,8 @@ use specs::prelude::*;
 use crate::components::*;
 use crate::systems;
 
+use rand::prelude::*;
+
 pub struct GameState<'a, 'b> {
     world: World,
     dispatcher: Dispatcher<'a, 'b>,
@@ -77,8 +79,25 @@ impl EventHandler for GameState<'_, '_> {
                         player_hp.remaining += 1;
                     }
 
+                    let mut rng = rand::thread_rng();
                     queued_enemies.iter().for_each(|(pos, et)| {
-                        let enemy = new_enemy(*et, *pos, MovementType::HLine(0.0..0.0, 0.0));
+                        let (mt1, mt2) = {
+                            let mt = rng.gen_range(0, 2);
+                            let mt2_x = crate::SCREEN_WIDTH - 90.0 - pos.x;
+                            match mt {
+                                0 => (
+                                    MovementType::horizontal(pos.x, 75.0, 1.0),
+                                    MovementType::horizontal(mt2_x, 75.0, 1.0),
+                                ),
+                                1 => (
+                                    MovementType::vertical(pos.y, 90.0, 1.0),
+                                    MovementType::vertical(pos.y, 90.0, 1.0),
+                                ),
+                                // 2 => (MovementType::circle(*pos, 60.0, 1.0), MovementType::circle(Point::new(mt2_x, pos.y), 60.0, 1.0)),
+                                _ => panic!("something has gone terribly wrong"),
+                            }
+                        };
+                        let mut enemy = new_enemy(*et, *pos, mt1);
 
                         self.world
                             .entities()
@@ -96,6 +115,7 @@ impl EventHandler for GameState<'_, '_> {
 
                         let pos_2 =
                             Point::new(crate::SCREEN_WIDTH - 90.0 - (enemy.0).0.x, (enemy.0).0.y);
+                        enemy.2.movement = mt2;
 
                         self.world
                             .entities()

@@ -351,20 +351,30 @@ pub struct EnemyMoveSys;
 impl<'a> System<'a> for EnemyMoveSys {
     type SystemData = (
         ReadStorage<'a, Position>,
-        ReadStorage<'a, Enemy>,
+        WriteStorage<'a, Enemy>,
         WriteStorage<'a, Velocity>,
     );
 
-    fn run(&mut self, (positions, enemies, mut velocities): Self::SystemData) {
-        (&enemies, &positions, &mut velocities)
+    fn run(&mut self, (positions, mut enemies, mut velocities): Self::SystemData) {
+        (&mut enemies, &positions, &mut velocities)
             .join()
-            .for_each(|(enemy, pos, vel)| match &enemy.movement {
+            .for_each(|(enemy, pos, vel)| match &mut enemy.movement {
                 MovementType::HLine(range, _) => {
                     if !range.contains(&pos.0.x) {
                         vel.0.x *= -1.0;
                     }
                 }
-                _ => todo!(),
+                MovementType::VLine(range, _) => {
+                    if !range.contains(&pos.0.y) {
+                        vel.0.y *= -1.0;
+                    }
+                }
+                MovementType::Circle(_, rad, speed, angle) => {
+                    // TODO some math here
+                    vel.0.y = angle.sin() * *rad;
+                    vel.0.x = angle.cos() * *rad;
+                    *angle += *speed / 20.0 * 3.1415;
+                }
             });
     }
 }

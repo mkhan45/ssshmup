@@ -177,7 +177,21 @@ pub enum EnemyType {
 pub enum MovementType {
     HLine(std::ops::Range<f32>, f32),
     VLine(std::ops::Range<f32>, f32),
-    Circle(Point, f32, f32),
+    Circle(Point, f32, f32, f32),
+}
+
+impl MovementType {
+    pub fn horizontal(center: f32, width: f32, speed: f32) -> Self {
+        MovementType::HLine((center - width / 2.0)..(center + width / 2.0), speed)
+    }
+
+    pub fn vertical(center: f32, height: f32, speed: f32) -> Self {
+        MovementType::VLine((center - height / 2.0)..(center + height / 2.0), speed)
+    }
+
+    pub fn circle(center: Point, radius: f32, speed: f32) -> Self {
+        MovementType::Circle(center, radius, speed, 0.0)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Component)]
@@ -202,7 +216,8 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
 
     let vel = match movement {
         MovementType::HLine(_, speed) => [speed, 0.0].into(),
-        _ => todo!(),
+        MovementType::VLine(_, speed) => [0.0, speed].into(),
+        MovementType::Circle(_, _, speed, _) => [0.0, speed].into(),
     };
 
     let sprite_index = match ty {
