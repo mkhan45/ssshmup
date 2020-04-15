@@ -333,10 +333,7 @@ impl<'a> System<'a> for PlayerCollSys {
                 if other_rect.overlaps(&player_rect) {
                     if let Some(enemy) = enemies.get(entity) {
                         let (damage_to_player, iframes) = match enemy.ty {
-                            EnemyType::BasicEnemy => (1, 30),
-                            EnemyType::AimEnemy => (1, 30),
-                            EnemyType::PredictEnemy => (1, 30),
-                            EnemyType::TrackingEnemy => (1, 30),
+                            _ => (1, 30),
                         };
                         player_hp.remaining =
                             (player_hp.remaining as i16 - damage_to_player).max(0) as u32;
@@ -378,7 +375,7 @@ impl<'a> System<'a> for EnemyMoveSys {
                     // TODO some math here
                     vel.0.y = angle.sin() * *rad;
                     vel.0.x = angle.cos() * *rad;
-                    *angle += *speed / 20.0 * 3.1415;
+                    *angle += *speed / 20.0 * std::f32::consts::PI;
                 }
             });
     }

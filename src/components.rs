@@ -171,6 +171,7 @@ pub enum EnemyType {
     AimEnemy,
     PredictEnemy,
     TrackingEnemy,
+    AimEnemy2,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -212,6 +213,7 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
         EnemyType::AimEnemy => (3, (55.0, 43.0), BulletType::AimedBullet, 180),
         EnemyType::PredictEnemy => (3, (55.0, 43.0), BulletType::PredictBullet, 90),
         EnemyType::TrackingEnemy => (3, (55.0, 43.0), BulletType::TrackingBullet, 180),
+        EnemyType::AimEnemy2 => (5, (55.0, 43.0), BulletType::AimedBullet, 90),
     };
 
     let vel = match movement {
@@ -222,7 +224,7 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
 
     let sprite_index = match ty {
         EnemyType::BasicEnemy => 0,
-        EnemyType::AimEnemy => 1,
+        EnemyType::AimEnemy | EnemyType::AimEnemy2 => 1,
         EnemyType::PredictEnemy => 2,
         EnemyType::TrackingEnemy => 3,
     };
