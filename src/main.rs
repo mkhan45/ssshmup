@@ -14,17 +14,22 @@ const SCREEN_WIDTH: f32 = 1024.0 * 0.75;
 const SCREEN_HEIGHT: f32 = 1024.0 * 0.75;
 
 fn main() -> GameResult {
-    let (ctx, event_loop) = &mut ggez::ContextBuilder::new("Tetrs", "Fish")
-        .window_setup(ggez::conf::WindowSetup::default().title("Tetrs"))
+    let (ctx, event_loop) = &mut ggez::ContextBuilder::new("Game", "Fish")
+        .window_setup(ggez::conf::WindowSetup::default().title("Game"))
         .window_mode(
             ggez::conf::WindowMode::default()
                 .dimensions(SCREEN_WIDTH, SCREEN_HEIGHT)
-                .resizable(false),
+                .resizable(true),
         )
         .build()
         .expect("error building context");
 
     ggez::graphics::set_default_filter(ctx, ggez::graphics::FilterMode::Nearest);
+    ggez::graphics::set_screen_coordinates(
+        ctx,
+        ggez::graphics::Rect::new(0.0, 0.0, SCREEN_WIDTH, SCREEN_HEIGHT),
+    )
+    .unwrap();
 
     let mut world = World::new();
 

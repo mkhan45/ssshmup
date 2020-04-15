@@ -33,7 +33,7 @@ impl EventHandler for GameState<'_, '_> {
         }
 
         // for stuff to load in
-        if ggez::timer::ticks(&ctx) < 30 {
+        if ggez::timer::ticks(&ctx) < 5 {
             return Ok(());
         }
 
@@ -188,7 +188,9 @@ impl EventHandler for GameState<'_, '_> {
             (&positions, &colorects, &stars)
                 .join()
                 .for_each(|(pos, colorect, _)| {
-                    draw_colorect(&mut builder, (*pos).into(), &colorect);
+                    if pos.0.y > 0.0 {
+                        draw_colorect(&mut builder, (*pos).into(), &colorect);
+                    }
                 });
 
             (&positions, &colorects, !&stars)
@@ -285,6 +287,32 @@ impl EventHandler for GameState<'_, '_> {
 
         graphics::present(ctx).unwrap();
         Ok(())
+    }
+
+    fn resize_event(&mut self, ctx: &mut Context, width: f32, height: f32) {
+        use crate::{SCREEN_HEIGHT, SCREEN_WIDTH};
+        let aspect_ratio = height / width;
+        let initial_ratio = SCREEN_HEIGHT / SCREEN_WIDTH;
+
+        if initial_ratio > aspect_ratio {
+            // width is greater than usual
+            let new_width = SCREEN_WIDTH / aspect_ratio;
+            let excess_width = new_width - SCREEN_WIDTH;
+            ggez::graphics::set_screen_coordinates(
+                ctx,
+                graphics::Rect::new(-excess_width / 2.0, 0.0, new_width, SCREEN_HEIGHT),
+            )
+            .unwrap();
+        } else {
+            // height is greater than usual
+            let new_height = SCREEN_HEIGHT * aspect_ratio;
+            let excess_height = new_height - SCREEN_HEIGHT;
+            ggez::graphics::set_screen_coordinates(
+                ctx,
+                graphics::Rect::new(0.0, -excess_height / 2.0, SCREEN_WIDTH, new_height),
+            )
+            .unwrap();
+        }
     }
 }
 
