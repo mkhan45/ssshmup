@@ -176,6 +176,7 @@ impl<'a> System<'a> for BulletCollSys {
         Entities<'a>,
         Read<'a, AnimatedSprites>,
         Read<'a, PlayerEntity>,
+        Write<'a, HPText>,
     );
 
     fn run(
@@ -189,6 +190,7 @@ impl<'a> System<'a> for BulletCollSys {
             entities,
             animated_sprites,
             player_entity,
+            mut hp_text,
         ): Self::SystemData,
     ) {
         let mut explosion_positions: Vec<Point> = Vec::new();
@@ -225,6 +227,9 @@ impl<'a> System<'a> for BulletCollSys {
                                         hp.remaining -= bullet.damage;
                                     } else {
                                         hp.remaining = 0;
+                                    }
+                                    if entity == player_entity.0 {
+                                        hp_text.needs_redraw = true;
                                     }
                                     explosion_positions.push(pos.0 + Vector::new(-20.0, -20.0));
                                     entities.delete(bullet_entity).unwrap();
@@ -430,7 +435,7 @@ impl<'a> System<'a> for EnemyShootSys {
                     let speed = match bullet_type {
                         BulletType::AimedBullet => 9.0,
                         BulletType::TrackingBullet => 5.0,
-                        _ => panic!("something has gone terribly wrong"),
+                        _ => unreachable!(),
                     };
                     (player_pos - pos).normalize() * speed
                 }
@@ -449,7 +454,7 @@ impl<'a> System<'a> for EnemyShootSys {
             };
             let bullet_tuple = new_bullet(
                 *bullet_type,
-                *pos + Vector::new(16.0, 0.0),
+                *pos + Vector::new(33.0, 64.0),
                 vel,
                 DamagesWho::Player,
             );
@@ -497,15 +502,18 @@ impl<'a> System<'a> for WaveCalcSys {
     type SystemData = (Write<'a, QueuedEnemies>, Read<'a, CurrentWave>);
 
     fn run(&mut self, (mut queued_enemies, current_wave): Self::SystemData) {
+        use std::collections::HashMap;
+
         let enemies = &mut queued_enemies.0;
         enemies.clear();
 
         let mut new_enemies = Vec::new();
+        let mut counter: HashMap<EnemyType, u8> = HashMap::new();
         let target_difficulty = match current_wave.0 {
-            1 => 5,
-            2 => 10,
-            3 => 13,
-            4 => 18,
+            1 => 12,
+            2 => 14,
+            3 => 20,
+            4 => 24,
             _ => current_wave.0 as u16 * 5 + 5,
         };
         let mut difficulty = 0u16;
@@ -513,9 +521,10 @@ impl<'a> System<'a> for WaveCalcSys {
         fn calc_diff(ty: EnemyType) -> u16 {
             match ty {
                 EnemyType::BasicEnemy => 1,
-                EnemyType::AimEnemy => 2,
+                EnemyType::AimEnemy => 3,
                 EnemyType::PredictEnemy => 3,
                 EnemyType::TrackingEnemy => 5,
+                EnemyType::AimEnemy2 => 6,
             }
         }
 
@@ -525,20 +534,29 @@ impl<'a> System<'a> for WaveCalcSys {
                 EnemyType::AimEnemy,
                 EnemyType::PredictEnemy,
                 EnemyType::TrackingEnemy,
+                EnemyType::AimEnemy2,
             ]
             .iter()
             .filter_map(|enemy_ty| {
                 let diff = calc_diff(*enemy_ty);
-                if diff < (difficulty as f32 / 1.5).round() as u16 {
+                if diff < (target_difficulty - difficulty)
+                    && (diff as f32) < target_difficulty as f32 / 4.0
+                {
                     Some((enemy_ty, diff))
                 } else {
                     None
                 }
             })
-            .max_by_key(|(_, diff)| *diff)
+            .max_by_key(|(ty, diff)| {
+                *diff - (((*counter.get(ty).unwrap_or(&0) as u16).pow(2)).min(*diff / 3) * 3)
+            })
             .unwrap_or((&EnemyType::BasicEnemy, 1));
             difficulty += new_enemy.1 * 2;
-            new_enemies.push(new_enemy);
+            if let Some(count) = counter.get_mut(new_enemy.0) {
+                *count += 1;
+            } else {
+                counter.insert(*new_enemy.0, 1);
+            }
             new_enemies.push(new_enemy);
         }
 

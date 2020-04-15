@@ -103,6 +103,17 @@ fn main() -> GameResult {
     world.insert(components::CurrentWave(0));
     world.insert(components::QueuedEnemies(Vec::new()));
     world.insert(components::FramesToNextWave(0));
+    {
+        use ggez::graphics::{Font, Scale, Text};
+        let font = Font::new(ctx, "/fonts/Xolonium-Regular.ttf").unwrap();
+        let mut text = Text::new(format!("HP: {}", 5));
+        text.set_font(font, Scale::uniform(48.0));
+        world.insert(components::HPText {
+            needs_redraw: false,
+            text: Mutex::new(text),
+        });
+        world.insert(components::GameFont(font));
+    }
 
     // (0..9).for_each(|i| {
     //     let min_x = i as f32 * 60.0;

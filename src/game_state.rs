@@ -43,6 +43,30 @@ impl EventHandler for GameState<'_, '_> {
         }
 
         {
+            let hp_text = &mut self.world.fetch_mut::<HPText>();
+            if hp_text.needs_redraw {
+                hp_text.needs_redraw = false;
+
+                let hp = {
+                    let player = self.world.fetch::<PlayerEntity>().0;
+                    self.world
+                        .read_storage::<HP>()
+                        .get(player)
+                        .unwrap()
+                        .remaining
+                };
+
+                *hp_text.text.lock().unwrap() = {
+                    use ggez::graphics::Scale;
+                    let font = self.world.fetch::<GameFont>().0;
+                    let mut text = graphics::Text::new(format!("HP: {}", hp));
+                    text.set_font(font, Scale::uniform(48.0));
+                    text
+                };
+            }
+        }
+
+        {
             let num_enemies = {
                 let enemies = self.world.read_storage::<Enemy>();
                 enemies.join().count()
@@ -52,6 +76,7 @@ impl EventHandler for GameState<'_, '_> {
                 if *frames_to_next_wave != 0 {
                     *frames_to_next_wave -= 1;
                 } else {
+                    self.world.fetch_mut::<HPText>().needs_redraw = true;
                     {
                         let current_wave = &mut self.world.fetch_mut::<CurrentWave>().0;
                         *current_wave += 1;
@@ -94,7 +119,7 @@ impl EventHandler for GameState<'_, '_> {
                                     MovementType::vertical(pos.y, 90.0, 1.0),
                                 ),
                                 // 2 => (MovementType::circle(*pos, 60.0, 1.0), MovementType::circle(Point::new(mt2_x, pos.y), 60.0, 1.0)),
-                                _ => panic!("something has gone terribly wrong"),
+                                _ => unreachable!(),
                             }
                         };
                         let mut enemy = new_enemy(*et, *pos, mt1);
@@ -284,6 +309,17 @@ impl EventHandler for GameState<'_, '_> {
 
         let mesh = builder.build(ctx)?;
         graphics::draw(ctx, &mesh, DrawParam::new())?;
+
+        {
+            let text_mutex = &self.world.fetch::<HPText>().text;
+            let text = text_mutex.lock().unwrap();
+            graphics::draw(
+                ctx,
+                &*text,
+                graphics::DrawParam::new().dest([50.0, crate::SCREEN_HEIGHT - 50.0]),
+            )
+            .unwrap();
+        }
 
         graphics::present(ctx).unwrap();
         Ok(())

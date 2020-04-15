@@ -394,3 +394,12 @@ impl Default for FramesToNextWave {
 
 #[derive(Clone, Default)]
 pub struct QueuedEnemies(pub Vec<(Point, EnemyType)>);
+
+#[derive(Default)]
+pub struct HPText {
+    pub needs_redraw: bool,
+    pub text: Mutex<ggez::graphics::Text>,
+}
+
+#[derive(Clone, Default)]
+pub struct GameFont(pub ggez::graphics::Font);
