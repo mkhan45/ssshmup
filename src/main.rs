@@ -106,7 +106,7 @@ fn main() -> GameResult {
     {
         use ggez::graphics::{Font, Scale, Text};
         let font = Font::new(ctx, "/fonts/Xolonium-Regular.ttf").unwrap();
-        let mut text = Text::new(format!("HP: {}", 5));
+        let mut text = Text::new(format!("HP: {}\nWave: {}", 5, 0));
         text.set_font(font, Scale::uniform(48.0));
         world.insert(components::HPText {
             needs_redraw: false,

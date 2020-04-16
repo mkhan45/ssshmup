@@ -56,10 +56,12 @@ impl EventHandler for GameState<'_, '_> {
                         .remaining
                 };
 
+                let wave = self.world.fetch::<CurrentWave>().0;
+
                 *hp_text.text.lock().unwrap() = {
                     use ggez::graphics::Scale;
                     let font = self.world.fetch::<GameFont>().0;
-                    let mut text = graphics::Text::new(format!("HP: {}", hp));
+                    let mut text = graphics::Text::new(format!("HP: {}\nWave: {}", hp, wave));
                     text.set_font(font, Scale::uniform(48.0));
                     text
                 };
