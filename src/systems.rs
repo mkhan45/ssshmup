@@ -437,13 +437,18 @@ impl<'a> System<'a> for EnemyShootSys {
                     (player_pos - pos).normalize() * speed
                 }
                 BulletType::PredictBullet => {
-                    let bullet_speed = 10.0f32;
+                    let bullet_speed = 13.0f32;
 
-                    let player_vec = player_pos - pos;
-                    let dist_to_player = player_vec.norm();
-                    let time_to_hit = dist_to_player / bullet_speed;
+                    let mut player_projected_pos = player_pos;
 
-                    let player_projected_pos = player_pos + player_vel * time_to_hit;
+                    (0..2).for_each(|_| {
+                        let player_vec = player_projected_pos - pos;
+                        let dist_to_player = player_vec.norm();
+                        let time_to_hit = dist_to_player / bullet_speed;
+
+                        player_projected_pos = player_pos + player_vel * time_to_hit;
+                    });
+
                     let direction = (player_projected_pos - pos).normalize();
 
                     direction * bullet_speed
@@ -518,8 +523,8 @@ impl<'a> System<'a> for WaveCalcSys {
         fn calc_diff(ty: EnemyType) -> u16 {
             match ty {
                 EnemyType::BasicEnemy => 1,
-                EnemyType::AimEnemy => 3,
-                EnemyType::PredictEnemy => 3,
+                EnemyType::AimEnemy => 2,
+                EnemyType::PredictEnemy => 4,
                 EnemyType::TrackingEnemy => 5,
                 EnemyType::AimEnemy2 => 6,
             }
@@ -545,7 +550,7 @@ impl<'a> System<'a> for WaveCalcSys {
                 }
             })
             .max_by_key(|(ty, diff)| {
-                *diff - (((*counter.get(ty).unwrap_or(&0) as u16).pow(2)).min(*diff / 3) * 3)
+                *diff - (((*counter.get(ty).unwrap_or(&0) as u16).pow(2)) * 3).min(*diff)
             })
             .unwrap_or((&EnemyType::BasicEnemy, 1));
             difficulty += new_enemy.1 * 2;
