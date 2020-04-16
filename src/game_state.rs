@@ -318,7 +318,7 @@ impl EventHandler for GameState<'_, '_> {
             graphics::draw(
                 ctx,
                 &*text,
-                graphics::DrawParam::new().dest([50.0, crate::SCREEN_HEIGHT - 50.0]),
+                graphics::DrawParam::new().dest([50.0, crate::SCREEN_HEIGHT - 100.0]),
             )
             .unwrap();
         }
