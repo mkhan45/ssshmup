@@ -1,7 +1,7 @@
 use ggez::{
     event::EventHandler,
     graphics::{self, Color, DrawMode, DrawParam, MeshBuilder, Rect},
-    input::{self, keyboard::KeyCode},
+    input::{self, keyboard::KeyCode, keyboard::KeyMods},
     Context, GameResult,
 };
 use specs::prelude::*;
@@ -27,9 +27,10 @@ impl<'a, 'b> GameState<'a, 'b> {
 
 impl EventHandler for GameState<'_, '_> {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
-        // std::thread::sleep(std::time::Duration::from_millis(50));
-        if ggez::timer::ticks(&ctx) % 120 == 0 {
-            dbg!(ggez::timer::fps(&ctx));
+        if cfg!(feature = "print_fps") {
+            if ggez::timer::ticks(&ctx) % 120 == 0 {
+                dbg!(ggez::timer::fps(&ctx));
+            }
         }
 
         // for stuff to load in
@@ -37,9 +38,12 @@ impl EventHandler for GameState<'_, '_> {
             return Ok(());
         }
 
-        if input::keyboard::is_key_pressed(ctx, KeyCode::Space) {
-            let mut spawn_sys = systems::SpawnBulletSys::default();
-            spawn_sys.run_now(&self.world);
+        let dead = self.world.fetch::<Dead>().0;
+        if !dead {
+            if input::keyboard::is_key_pressed(ctx, KeyCode::Space) {
+                let mut spawn_sys = systems::SpawnBulletSys::default();
+                spawn_sys.run_now(&self.world);
+            }
         }
 
         {
@@ -47,7 +51,9 @@ impl EventHandler for GameState<'_, '_> {
             if hp_text.needs_redraw {
                 hp_text.needs_redraw = false;
 
-                let hp = {
+                let hp = if dead {
+                    0
+                } else {
                     let player = self.world.fetch::<PlayerEntity>().0;
                     self.world
                         .read_storage::<HP>()
@@ -164,7 +170,7 @@ impl EventHandler for GameState<'_, '_> {
             }
         }
 
-        {
+        if !dead {
             let player_entity = self.world.fetch::<PlayerEntity>().0;
             let velocities = &mut self.world.write_storage::<Velocity>();
             let positions = &mut self.world.write_storage::<Position>();
@@ -200,7 +206,6 @@ impl EventHandler for GameState<'_, '_> {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, Color::new(0.0, 0.0, 0.0, 1.0));
-
         let mut builder = MeshBuilder::new();
         {
             let positions = self.world.read_storage::<Position>();
@@ -312,13 +317,31 @@ impl EventHandler for GameState<'_, '_> {
         let mesh = builder.build(ctx)?;
         graphics::draw(ctx, &mesh, DrawParam::new())?;
 
-        {
-            let text_mutex = &self.world.fetch::<HPText>().text;
-            let text = text_mutex.lock().unwrap();
+        let text_mutex = &self.world.fetch::<HPText>().text;
+        let text = text_mutex.lock().unwrap();
+        graphics::draw(
+            ctx,
+            &*text,
+            graphics::DrawParam::new().dest([50.0, crate::SCREEN_HEIGHT - 100.0]),
+        )
+        .unwrap();
+
+        if self.world.fetch::<Dead>().0 {
+            let dead_text = &self.world.fetch::<DeadText>().0;
+            let text = dead_text.lock().unwrap();
             graphics::draw(
                 ctx,
-                &*text,
-                graphics::DrawParam::new().dest([50.0, crate::SCREEN_HEIGHT - 100.0]),
+                &text[0],
+                graphics::DrawParam::new()
+                    .dest([crate::SCREEN_WIDTH / 4.0, crate::SCREEN_HEIGHT / 4.0]),
+            )
+            .unwrap();
+
+            graphics::draw(
+                ctx,
+                &text[1],
+                graphics::DrawParam::new()
+                    .dest([crate::SCREEN_WIDTH / 5.0, crate::SCREEN_HEIGHT / 2.5]),
             )
             .unwrap();
         }
@@ -350,6 +373,34 @@ impl EventHandler for GameState<'_, '_> {
                 graphics::Rect::new(0.0, -excess_height / 2.0, SCREEN_WIDTH, new_height),
             )
             .unwrap();
+        }
+    }
+
+    fn key_down_event(
+        &mut self,
+        ctx: &mut Context,
+        keycode: KeyCode,
+        _keymods: KeyMods,
+        _repeat: bool,
+    ) {
+        if keycode == KeyCode::Space && self.world.fetch::<Dead>().0 {
+            let player_sprite = ggez::graphics::Image::new(ctx, "/player.png").unwrap();
+            let player = new_player(player_sprite, 5);
+            let player = create_player(&mut self.world, player);
+            self.world.insert(PlayerEntity(player));
+
+            self.world.insert(Dead(false));
+            self.world.insert(CurrentWave(0));
+            self.world.fetch_mut::<HPText>().needs_redraw = true;
+
+            {
+                let entities = self.world.entities();
+                let enemies = self.world.read_storage::<Enemy>();
+                (&enemies, &entities).join().for_each(|(_, entity)| {
+                    entities.delete(entity).unwrap();
+                });
+            }
+            self.world.maintain();
         }
     }
 }

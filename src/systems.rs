@@ -135,20 +135,22 @@ impl<'a> System<'a> for SpawnBulletSys {
 
 pub struct HPKillSys;
 impl<'a> System<'a> for HPKillSys {
-    type SystemData = (ReadStorage<'a, HP>, Entities<'a>, Read<'a, PlayerEntity>);
+    type SystemData = (
+        ReadStorage<'a, HP>,
+        Entities<'a>,
+        Read<'a, PlayerEntity>,
+        Write<'a, Dead>,
+    );
 
-    fn run(&mut self, (hp_storage, entities, player_entity): Self::SystemData) {
-        (&hp_storage, &entities)
-            .par_join()
-            .for_each(|(hp, entity)| {
-                if hp.remaining == 0 {
-                    entities.delete(entity).unwrap();
-                    if entity == player_entity.0 {
-                        println!("Player died");
-                        std::process::exit(0);
-                    }
+    fn run(&mut self, (hp_storage, entities, player_entity, mut dead): Self::SystemData) {
+        (&hp_storage, &entities).join().for_each(|(hp, entity)| {
+            if hp.remaining == 0 {
+                entities.delete(entity).unwrap();
+                if entity == player_entity.0 {
+                    dead.0 = true;
                 }
-            });
+            }
+        });
     }
 }
 
@@ -257,10 +259,10 @@ impl<'a> System<'a> for ReloadTimerSys {
     type SystemData = (WriteStorage<'a, Player>, Read<'a, PlayerEntity>);
 
     fn run(&mut self, (mut players, player_entity): Self::SystemData) {
-        let player_data = &mut players.get_mut(player_entity.0).unwrap();
-
-        if player_data.reload_timer != 0 {
-            player_data.reload_timer -= 1;
+        if let Some(player_data) = &mut players.get_mut(player_entity.0) {
+            if player_data.reload_timer != 0 {
+                player_data.reload_timer -= 1;
+            }
         }
     }
 }
@@ -296,6 +298,7 @@ impl<'a> System<'a> for PlayerCollSys {
         ReadStorage<'a, Enemy>,
         Entities<'a>,
         Read<'a, PlayerEntity>,
+        Read<'a, Dead>,
     );
 
     fn run(
@@ -309,8 +312,13 @@ impl<'a> System<'a> for PlayerCollSys {
             enemies,
             entities,
             player_entity,
+            dead,
         ): Self::SystemData,
     ) {
+        if dead.0 {
+            return;
+        }
+
         let player_pos = positions.get(player_entity.0).unwrap().0;
         let player_hitbox = hitboxes.get(player_entity.0).unwrap();
         let player_vel = velocities.get_mut(player_entity.0).unwrap();
@@ -393,6 +401,7 @@ impl<'a> System<'a> for EnemyShootSys {
         Entities<'a>,
         Read<'a, SpriteSheets>,
         Read<'a, PlayerEntity>,
+        Read<'a, Dead>,
     );
 
     fn run(
@@ -407,8 +416,13 @@ impl<'a> System<'a> for EnemyShootSys {
             entities,
             spritesheets,
             player_entity,
+            dead,
         ): Self::SystemData,
     ) {
+        if dead.0 {
+            return;
+        }
+
         let new_bullets: Vec<(Point, BulletType)> = (&positions, &mut enemies)
             .par_join()
             .filter_map(|(pos, mut enemy)| {
@@ -456,7 +470,7 @@ impl<'a> System<'a> for EnemyShootSys {
             };
             let bullet_tuple = new_bullet(
                 *bullet_type,
-                *pos + Vector::new(33.0, 64.0),
+                *pos + Vector::new(36.0, 72.0),
                 vel,
                 DamagesWho::Player,
             );
@@ -486,15 +500,17 @@ impl<'a> System<'a> for BulletTrackingSys {
     );
 
     fn run(&mut self, (mut vels, positions, bullets, player_entity): Self::SystemData) {
-        let player_pos = positions.get(player_entity.0).unwrap().0;
-        (&mut vels, &positions, &bullets)
-            .par_join()
-            .filter(|(_, _, bullet)| bullet.ty == BulletType::TrackingBullet)
-            .for_each(|(vel, pos, _)| {
-                let direction = (player_pos - pos.0).normalize();
-                let target_vel = direction * 8.0;
-                vel.0 += (target_vel - vel.0) * 0.02;
-            });
+        if let Some(player_pos) = positions.get(player_entity.0) {
+            let player_pos = player_pos.0;
+            (&mut vels, &positions, &bullets)
+                .par_join()
+                .filter(|(_, _, bullet)| bullet.ty == BulletType::TrackingBullet)
+                .for_each(|(vel, pos, _)| {
+                    let direction = (player_pos - pos.0).normalize();
+                    let target_vel = direction * 8.0;
+                    vel.0 += (target_vel - vel.0) * 0.02;
+                });
+        }
     }
 }
 
@@ -523,20 +539,22 @@ impl<'a> System<'a> for WaveCalcSys {
         fn calc_diff(ty: EnemyType) -> u16 {
             match ty {
                 EnemyType::BasicEnemy => 1,
+                EnemyType::BasicEnemy2 => 2,
                 EnemyType::AimEnemy => 2,
-                EnemyType::PredictEnemy => 4,
+                EnemyType::AimEnemy2 => 4,
+                EnemyType::PredictEnemy => 5,
                 EnemyType::TrackingEnemy => 5,
-                EnemyType::AimEnemy2 => 6,
             }
         }
 
         while difficulty < target_difficulty {
             let new_enemy = [
                 EnemyType::BasicEnemy,
+                EnemyType::BasicEnemy2,
                 EnemyType::AimEnemy,
+                EnemyType::AimEnemy2,
                 EnemyType::PredictEnemy,
                 EnemyType::TrackingEnemy,
-                EnemyType::AimEnemy2,
             ]
             .iter()
             .filter_map(|enemy_ty| {

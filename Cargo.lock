@@ -620,15 +620,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
 
 [[package]]
-name = "game"
-version = "0.1.0"
-dependencies = [
- "ggez",
- "rand 0.7.3",
- "specs",
-]
-
-[[package]]
 name = "generic-array"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2091,6 +2082,15 @@ dependencies = [
  "proc-macro2 1.0.10",
  "quote 1.0.3",
  "syn 1.0.17",
+]
+
+[[package]]
+name = "ssshmup"
+version = "0.5.0"
+dependencies = [
+ "ggez",
+ "rand 0.7.3",
+ "specs",
 ]
 
 [[package]]

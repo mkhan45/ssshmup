@@ -168,6 +168,7 @@ pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, damages_who: DamagesW
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum EnemyType {
     BasicEnemy,
+    BasicEnemy2,
     AimEnemy,
     PredictEnemy,
     TrackingEnemy,
@@ -210,6 +211,7 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
     let pos = Position(pos);
     let (hp, size, bullet_type, reload_speed) = match ty {
         EnemyType::BasicEnemy => (3, (55.0, 43.0), BulletType::BasicBullet, 180),
+        EnemyType::BasicEnemy2 => (3, (55.0, 43.0), BulletType::BasicBullet, 90),
         EnemyType::AimEnemy => (3, (55.0, 43.0), BulletType::AimedBullet, 180),
         EnemyType::PredictEnemy => (3, (55.0, 43.0), BulletType::PredictBullet, 90),
         EnemyType::TrackingEnemy => (3, (55.0, 43.0), BulletType::TrackingBullet, 180),
@@ -224,9 +226,11 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
 
     let sprite_index = match ty {
         EnemyType::BasicEnemy => 0,
-        EnemyType::AimEnemy | EnemyType::AimEnemy2 => 1,
+        EnemyType::AimEnemy => 1,
         EnemyType::PredictEnemy => 2,
         EnemyType::TrackingEnemy => 3,
+        EnemyType::BasicEnemy2 => 4,
+        EnemyType::AimEnemy2 => 5,
     };
 
     (
@@ -348,7 +352,7 @@ impl StarInfo {
         let pos = [x, y].into();
         let vel = [0.0, y_vel].into();
         let color_rect = ColorRect {
-            color: ggez::graphics::WHITE,
+            color: ggez::graphics::Color::new(1.0, 1.0, 1.0, 0.35),
             w: size,
             h: size,
         };
@@ -403,5 +407,11 @@ pub struct HPText {
     pub text: Mutex<ggez::graphics::Text>,
 }
 
+#[derive(Default)]
+pub struct DeadText(pub Mutex<[ggez::graphics::Text; 2]>);
+
 #[derive(Clone, Default)]
 pub struct GameFont(pub ggez::graphics::Font);
+
+#[derive(Clone, Default)]
+pub struct Dead(pub bool);

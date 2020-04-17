@@ -1,3 +1,4 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use components::PlayerEntity;
 use ggez::{event, graphics::spritebatch::SpriteBatch, GameResult};
 use specs::prelude::*;
@@ -83,7 +84,7 @@ fn main() -> GameResult {
         spritesheets.insert(
             "enemies".to_string(),
             Arc::new(Mutex::new(components::SpriteSheet {
-                width: 4,
+                width: 8,
                 batch: enemy_spritebatch,
             })),
         );
@@ -103,6 +104,7 @@ fn main() -> GameResult {
     world.insert(components::CurrentWave(0));
     world.insert(components::QueuedEnemies(Vec::new()));
     world.insert(components::FramesToNextWave(0));
+    world.insert(components::Dead(false));
     {
         use ggez::graphics::{Font, Scale, Text};
         let font = Font::new(ctx, "/fonts/Xolonium-Regular.ttf").unwrap();
@@ -113,6 +115,13 @@ fn main() -> GameResult {
             text: Mutex::new(text),
         });
         world.insert(components::GameFont(font));
+
+        let mut dead_text1 = Text::new("You Died!");
+        dead_text1.set_font(font, Scale::uniform(96.0));
+
+        let mut dead_text2 = Text::new("Press Space to respawn");
+        dead_text2.set_font(font, Scale::uniform(48.0));
+        world.insert(components::DeadText(Mutex::new([dead_text1, dead_text2])));
     }
 
     // (0..9).for_each(|i| {
