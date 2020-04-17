@@ -277,7 +277,7 @@ pub struct Player {
 impl Default for Player {
     fn default() -> Self {
         Player {
-            bullet_type: BulletType::BasicBullet,
+            bullet_type: BulletType::AimedBullet,
             reload_speed: 6,
             reload_timer: 6,
         }
@@ -332,5 +332,5 @@ pub fn create_player(world: &mut World, player: PlayerTuple) -> Entity {
 pub struct Star;
 
 #[derive(Clone, Copy, Debug, PartialEq, Component)]
-#[storage(VecStorage)]
+#[storage(DenseVecStorage)]
 pub struct Hitbox(pub Point, pub f32, pub f32);
