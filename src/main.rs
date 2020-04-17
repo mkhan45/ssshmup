@@ -1,5 +1,4 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-use components::PlayerEntity;
 use ggez::{event, graphics::spritebatch::SpriteBatch, GameResult};
 use specs::prelude::*;
 
@@ -7,9 +6,11 @@ use std::collections::HashMap;
 
 use std::sync::{Arc, Mutex};
 
-mod components;
 mod game_state;
-mod systems;
+
+mod ecs;
+
+use ecs::{components, resources, systems};
 
 const SCREEN_WIDTH: f32 = 1024.0 * 0.75;
 const SCREEN_HEIGHT: f32 = 1024.0 * 0.75;
@@ -45,7 +46,7 @@ fn main() -> GameResult {
     world.register::<components::AnimatedSprite>();
     world.register::<components::Hitbox>();
 
-    world.insert(components::StarInfo {
+    world.insert(resources::StarInfo {
         num_stars: 200,
         size: 2.5,
         size_variance: 1.5,
@@ -56,7 +57,7 @@ fn main() -> GameResult {
     let player_sprite = ggez::graphics::Image::new(ctx, "/player.png").unwrap();
     let player = components::new_player(player_sprite, 5);
     let player = components::create_player(&mut world, player);
-    world.insert(PlayerEntity(player));
+    world.insert(components::PlayerEntity(player));
 
     let mut sprites = HashMap::new();
     let mut animated_sprites = HashMap::new();
@@ -73,7 +74,7 @@ fn main() -> GameResult {
         let bullet_spritebatch = SpriteBatch::new(bullet_spritesheet.unwrap());
         spritesheets.insert(
             "bullets".to_string(),
-            Arc::new(Mutex::new(components::SpriteSheet {
+            Arc::new(Mutex::new(resources::SpriteSheet {
                 width: 4,
                 batch: bullet_spritebatch,
             })),
@@ -83,7 +84,7 @@ fn main() -> GameResult {
         let enemy_spritebatch = SpriteBatch::new(enemy_spritesheet.unwrap());
         spritesheets.insert(
             "enemies".to_string(),
-            Arc::new(Mutex::new(components::SpriteSheet {
+            Arc::new(Mutex::new(resources::SpriteSheet {
                 width: 8,
                 batch: enemy_spritebatch,
             })),
@@ -95,33 +96,33 @@ fn main() -> GameResult {
             components::AnimatedSprite::new(explosion_img, 12, 16, true),
         );
     }
-    world.insert(components::BulletSpriteBatch(SpriteBatch::new(
+    world.insert(resources::BulletSpriteBatch(SpriteBatch::new(
         sprites.get("bullet1").unwrap().clone(),
     )));
-    world.insert(components::Sprites(sprites));
-    world.insert(components::AnimatedSprites(animated_sprites));
-    world.insert(components::SpriteSheets(spritesheets));
-    world.insert(components::CurrentWave(0));
-    world.insert(components::QueuedEnemies(Vec::new()));
-    world.insert(components::FramesToNextWave(0));
-    world.insert(components::Dead(false));
+    world.insert(resources::Sprites(sprites));
+    world.insert(resources::AnimatedSprites(animated_sprites));
+    world.insert(resources::SpriteSheets(spritesheets));
+    world.insert(resources::CurrentWave(0));
+    world.insert(resources::QueuedEnemies(Vec::new()));
+    world.insert(resources::FramesToNextWave(0));
+    world.insert(resources::Dead(false));
     {
         use ggez::graphics::{Font, Scale, Text};
         let font = Font::new(ctx, "/fonts/Xolonium-Regular.ttf").unwrap();
         let mut text = Text::new(format!("HP: {}\nWave: {}", 5, 0));
         text.set_font(font, Scale::uniform(48.0));
-        world.insert(components::HPText {
+        world.insert(resources::HPText {
             needs_redraw: false,
             text: Mutex::new(text),
         });
-        world.insert(components::GameFont(font));
+        world.insert(resources::GameFont(font));
 
         let mut dead_text1 = Text::new("You Died!");
         dead_text1.set_font(font, Scale::uniform(96.0));
 
         let mut dead_text2 = Text::new("Press Space to respawn");
         dead_text2.set_font(font, Scale::uniform(48.0));
-        world.insert(components::DeadText(Mutex::new([dead_text1, dead_text2])));
+        world.insert(resources::DeadText(Mutex::new([dead_text1, dead_text2])));
     }
 
     // (0..9).for_each(|i| {

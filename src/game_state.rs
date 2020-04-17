@@ -6,8 +6,9 @@ use ggez::{
 };
 use specs::prelude::*;
 
-use crate::components::*;
-use crate::systems;
+use crate::ecs::components::*;
+use crate::ecs::resources::*;
+use crate::ecs::systems;
 
 use rand::prelude::*;
 
@@ -27,10 +28,8 @@ impl<'a, 'b> GameState<'a, 'b> {
 
 impl EventHandler for GameState<'_, '_> {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
-        if cfg!(feature = "print_fps") {
-            if ggez::timer::ticks(&ctx) % 120 == 0 {
-                dbg!(ggez::timer::fps(&ctx));
-            }
+        if cfg!(feature = "print_fps") && ggez::timer::ticks(&ctx) % 120 == 0 {
+            dbg!(ggez::timer::fps(&ctx));
         }
 
         // for stuff to load in
@@ -39,11 +38,10 @@ impl EventHandler for GameState<'_, '_> {
         }
 
         let dead = self.world.fetch::<Dead>().0;
-        if !dead {
-            if input::keyboard::is_key_pressed(ctx, KeyCode::Space) {
-                let mut spawn_sys = systems::SpawnBulletSys::default();
-                spawn_sys.run_now(&self.world);
-            }
+
+        if !dead && input::keyboard::is_key_pressed(ctx, KeyCode::Space) {
+            let mut spawn_sys = systems::SpawnBulletSys::default();
+            spawn_sys.run_now(&self.world);
         }
 
         {
