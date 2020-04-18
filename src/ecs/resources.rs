@@ -1,3 +1,4 @@
+use ggez::audio::SoundData;
 use ggez::graphics::{spritebatch::SpriteBatch, Image};
 
 use std::collections::HashMap;
@@ -85,3 +86,9 @@ impl StarInfo {
         (Position(pos), Velocity(vel), color_rect)
     }
 }
+
+#[derive(Clone, Default)]
+pub struct Sounds(pub HashMap<String, SoundData>);
+
+#[derive(Clone, Default)]
+pub struct QueuedSounds(pub Vec<SoundData>);

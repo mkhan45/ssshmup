@@ -100,6 +100,7 @@ impl<'a> System<'a> for EnemyShootSys {
 
         new_bullets.iter().for_each(|(pos, bullet_type)| {
             let vel = match bullet_type {
+                BulletType::PlayerBullet => unreachable!(),
                 BulletType::BasicBullet => [0.0, 8.0].into(),
                 BulletType::AimedBullet | BulletType::TrackingBullet => {
                     let speed = match bullet_type {

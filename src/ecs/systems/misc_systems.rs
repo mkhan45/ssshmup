@@ -41,6 +41,8 @@ impl<'a> System<'a> for BulletCollSys {
         Read<'a, AnimatedSprites>,
         Read<'a, PlayerEntity>,
         Write<'a, HPText>,
+        Read<'a, Sounds>,
+        Write<'a, QueuedSounds>,
     );
 
     fn run(
@@ -55,6 +57,8 @@ impl<'a> System<'a> for BulletCollSys {
             animated_sprites,
             player_entity,
             mut hp_text,
+            sounds,
+            mut queued_sounds,
         ): Self::SystemData,
     ) {
         let mut explosion_positions: Vec<Point> = Vec::new();
@@ -113,6 +117,11 @@ impl<'a> System<'a> for BulletCollSys {
                 )
                 .build();
         });
+
+        if !explosion_positions.is_empty() {
+            let sound = sounds.0.get("boom").unwrap();
+            queued_sounds.0.push(sound.clone());
+        }
     }
 }
 
@@ -167,14 +176,21 @@ impl<'a> System<'a> for HPKillSys {
         Entities<'a>,
         Read<'a, PlayerEntity>,
         Write<'a, Dead>,
+        Read<'a, Sounds>,
+        Write<'a, QueuedSounds>,
     );
 
-    fn run(&mut self, (hp_storage, entities, player_entity, mut dead): Self::SystemData) {
+    fn run(
+        &mut self,
+        (hp_storage, entities, player_entity, mut dead, sounds, mut queued_sounds): Self::SystemData,
+    ) {
         (&hp_storage, &entities).join().for_each(|(hp, entity)| {
             if hp.remaining == 0 {
                 entities.delete(entity).unwrap();
                 if entity == player_entity.0 {
                     dead.0 = true;
+                    let sound = sounds.0.get("dead").unwrap();
+                    queued_sounds.0.push(sound.clone());
                 }
             }
         });

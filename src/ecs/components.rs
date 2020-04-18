@@ -95,6 +95,7 @@ impl HP {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BulletType {
+    PlayerBullet,
     BasicBullet,
     AimedBullet,
     PredictBullet,
@@ -129,6 +130,7 @@ impl Bullet {
 pub type BulletTuple = (Position, Hitbox, Velocity, Bullet, u8);
 pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, damages_who: DamagesWho) -> BulletTuple {
     let damage = match ty {
+        BulletType::PlayerBullet => 3,
         BulletType::BasicBullet => 1,
         BulletType::AimedBullet => 1,
         BulletType::PredictBullet => 1,
@@ -140,10 +142,12 @@ pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, damages_who: DamagesW
         BulletType::AimedBullet => 1,
         BulletType::PredictBullet => 2,
         BulletType::TrackingBullet => 3,
+        BulletType::PlayerBullet => 1,
     };
 
     let (offset, width, height) = match ty {
-        BulletType::BasicBullet
+        BulletType::PlayerBullet
+        | BulletType::BasicBullet
         | BulletType::AimedBullet
         | BulletType::PredictBullet
         | BulletType::TrackingBullet => (Point::new(5.0, 5.0), 15.0, 15.0),
@@ -211,7 +215,7 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
     let pos = Position(pos);
     let (hp, size, bullet_type, reload_speed) = match ty {
         EnemyType::BasicEnemy => (3, (55.0, 43.0), BulletType::BasicBullet, 180),
-        EnemyType::BasicEnemy2 => (3, (55.0, 43.0), BulletType::BasicBullet, 90),
+        EnemyType::BasicEnemy2 => (5, (55.0, 43.0), BulletType::BasicBullet, 90),
         EnemyType::AimEnemy => (3, (55.0, 43.0), BulletType::AimedBullet, 180),
         EnemyType::PredictEnemy => (3, (55.0, 43.0), BulletType::PredictBullet, 90),
         EnemyType::TrackingEnemy => (3, (55.0, 43.0), BulletType::TrackingBullet, 180),
@@ -277,9 +281,9 @@ pub struct Player {
 impl Default for Player {
     fn default() -> Self {
         Player {
-            bullet_type: BulletType::AimedBullet,
-            reload_speed: 6,
-            reload_timer: 6,
+            bullet_type: BulletType::PlayerBullet,
+            reload_speed: 12,
+            reload_timer: 0,
         }
     }
 }

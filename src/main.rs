@@ -47,7 +47,7 @@ fn main() -> GameResult {
     world.register::<components::Hitbox>();
 
     world.insert(resources::StarInfo {
-        num_stars: 200,
+        num_stars: 150,
         size: 2.5,
         size_variance: 1.5,
         vel: 5.0,
@@ -125,36 +125,25 @@ fn main() -> GameResult {
         world.insert(resources::DeadText(Mutex::new([dead_text1, dead_text2])));
     }
 
-    // (0..9).for_each(|i| {
-    //     let min_x = i as f32 * 60.0;
-    //     let (mut et1, et2) = if i % 2 == 0 {
-    //         (
-    //             components::EnemyType::BasicEnemy,
-    //             components::EnemyType::AimEnemy,
-    //         )
-    //     } else {
-    //         (
-    //             components::EnemyType::PredictEnemy,
-    //             components::EnemyType::BasicEnemy,
-    //         )
-    //     };
-    //     if i == 0 || i == 8 {
-    //         et1 = components::EnemyType::TrackingEnemy;
-    //     }
-    //     let enemy = components::new_enemy(
-    //         et1,
-    //         [min_x, 100.0].into(),
-    //         components::MovementType::HLine(min_x..min_x + 175.0, 1.25),
-    //     );
-    //     components::create_enemy(&mut world, enemy);
+    {
+        use ggez::audio::SoundData;
 
-    //     let enemy = components::new_enemy(
-    //         et2,
-    //         [min_x, 10.0].into(),
-    //         components::MovementType::HLine(min_x..min_x + 175.0, 1.25),
-    //     );
-    //     components::create_enemy(&mut world, enemy);
-    // });
+        let mut sounds = HashMap::new();
+        sounds.insert(
+            "shoot".to_string(),
+            SoundData::new(ctx, "/shoot2.ogg").unwrap(),
+        );
+        sounds.insert(
+            "boom".to_string(),
+            SoundData::new(ctx, "/boom.ogg").unwrap(),
+        );
+        sounds.insert(
+            "dead".to_string(),
+            SoundData::new(ctx, "/dead.ogg").unwrap(),
+        );
+        world.insert(resources::Sounds(sounds));
+        world.insert(resources::QueuedSounds(Vec::new()));
+    }
 
     let mut dispatcher = DispatcherBuilder::new()
         .with(systems::EnemyMoveSys, "enemy_move_sys", &[])

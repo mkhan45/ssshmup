@@ -18,6 +18,8 @@ impl<'a> System<'a> for SpawnBulletSys {
         Entities<'a>,
         Read<'a, PlayerEntity>,
         Read<'a, SpriteSheets>,
+        Read<'a, Sounds>,
+        Write<'a, QueuedSounds>,
     );
 
     fn run(
@@ -32,12 +34,17 @@ impl<'a> System<'a> for SpawnBulletSys {
             entities,
             player_entity,
             spritesheets,
+            sounds,
+            mut queued_sounds,
         ): Self::SystemData,
     ) {
         let player_data = &mut players.get_mut(player_entity.0).unwrap();
         let player_vel = vels.get(player_entity.0).unwrap().0;
 
         if player_data.reload_timer == 0 {
+            let sound = sounds.0.get("shoot").unwrap();
+            queued_sounds.0.push(sound.clone());
+
             player_data.reload_timer = player_data.reload_speed;
             let player_pos = positions.get(player_entity.0).unwrap().0;
             let bullet_pos: Point = player_pos + Vector::new(12.5, 5.0);

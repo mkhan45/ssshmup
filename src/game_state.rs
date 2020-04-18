@@ -45,6 +45,22 @@ impl EventHandler for GameState<'_, '_> {
         }
 
         {
+            use ggez::audio::Source;
+
+            self.world
+                .fetch_mut::<QueuedSounds>()
+                .0
+                .drain(..)
+                .for_each(|sound_data| {
+                    use ggez::audio::SoundSource;
+
+                    let mut source = Source::from_data(ctx, sound_data).unwrap();
+                    source.set_volume(0.2);
+                    source.play_detached();
+                });
+        }
+
+        {
             let hp_text = &mut self.world.fetch_mut::<HPText>();
             if hp_text.needs_redraw {
                 hp_text.needs_redraw = false;
