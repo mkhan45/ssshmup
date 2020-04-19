@@ -10,6 +10,8 @@ edition = "2018"
 ggez = "0.5.1"
 specs = { version = "0.15.1", features = ["specs-derive", "serde"] }
 rand = "0.7.3"
+simple_logger = "1.6.0"
+log = "0.4.5"
 
 [profile.dev.package."*"]
 opt-level = 3

@@ -2,6 +2,9 @@
 use ggez::{event, graphics::spritebatch::SpriteBatch, GameResult};
 use specs::prelude::*;
 
+use log;
+use simple_logger;
+
 use std::collections::HashMap;
 
 use std::sync::{Arc, Mutex};
@@ -16,6 +19,7 @@ const SCREEN_WIDTH: f32 = 1024.0 * 0.75;
 const SCREEN_HEIGHT: f32 = 1024.0 * 0.75;
 
 fn main() -> GameResult {
+    simple_logger::init_with_level(log::Level::Warn).expect("error initializing logger");
     let (ctx, event_loop) = &mut ggez::ContextBuilder::new("Game", "Fish")
         .window_setup(ggez::conf::WindowSetup::default().title("Game"))
         .window_mode(
@@ -31,7 +35,7 @@ fn main() -> GameResult {
         ctx,
         ggez::graphics::Rect::new(0.0, 0.0, SCREEN_WIDTH, SCREEN_HEIGHT),
     )
-    .unwrap();
+    .expect("error setting default screen coordinates");
 
     let mut world = World::new();
 
@@ -47,31 +51,27 @@ fn main() -> GameResult {
     world.register::<components::Hitbox>();
 
     world.insert(resources::StarInfo {
-        num_stars: 150,
-        size: 2.5,
+        num_stars: 60,
+        size: 2.25,
         size_variance: 1.5,
         vel: 5.0,
         vel_variance: 2.0,
     });
 
-    let player_sprite = ggez::graphics::Image::new(ctx, "/player.png").unwrap();
+    let player_sprite =
+        ggez::graphics::Image::new(ctx, "/player.png").expect("error loading player sprite");
     let player = components::new_player(player_sprite, 5);
     let player = components::create_player(&mut world, player);
     world.insert(components::PlayerEntity(player));
 
-    let mut sprites = HashMap::new();
+    let sprites = HashMap::new();
     let mut animated_sprites = HashMap::new();
     let mut spritesheets = HashMap::new();
     {
         use ggez::graphics::Image;
-        let enemy1_image = Image::new(ctx, "/ufo1.png");
-        let bullet1_image = Image::new(ctx, "/bullet1.png");
-
-        sprites.insert("enemy1".to_string(), enemy1_image.unwrap());
-        sprites.insert("bullet1".to_string(), bullet1_image.unwrap());
-
-        let bullet_spritesheet = Image::new(ctx, "/bullet_sheet.png");
-        let bullet_spritebatch = SpriteBatch::new(bullet_spritesheet.unwrap());
+        let bullet_spritesheet =
+            Image::new(ctx, "/bullet_sheet.png").expect("error loading bullet spritesheet");
+        let bullet_spritebatch = SpriteBatch::new(bullet_spritesheet);
         spritesheets.insert(
             "bullets".to_string(),
             Arc::new(Mutex::new(resources::SpriteSheet {
@@ -80,8 +80,9 @@ fn main() -> GameResult {
             })),
         );
 
-        let enemy_spritesheet = Image::new(ctx, "/enemy_sheet.png");
-        let enemy_spritebatch = SpriteBatch::new(enemy_spritesheet.unwrap());
+        let enemy_spritesheet =
+            Image::new(ctx, "/enemy_sheet.png").expect("error loading enemy spritesheet");
+        let enemy_spritebatch = SpriteBatch::new(enemy_spritesheet);
         spritesheets.insert(
             "enemies".to_string(),
             Arc::new(Mutex::new(resources::SpriteSheet {
@@ -90,15 +91,12 @@ fn main() -> GameResult {
             })),
         );
 
-        let explosion_img = Image::new(ctx, "/boom.png").unwrap();
+        let explosion_img = Image::new(ctx, "/boom.png").expect("error loading explosion sprite");
         animated_sprites.insert(
             "explosion".to_string(),
             components::AnimatedSprite::new(explosion_img, 12, 16, true),
         );
     }
-    world.insert(resources::BulletSpriteBatch(SpriteBatch::new(
-        sprites.get("bullet1").unwrap().clone(),
-    )));
     world.insert(resources::Sprites(sprites));
     world.insert(resources::AnimatedSprites(animated_sprites));
     world.insert(resources::SpriteSheets(spritesheets));
@@ -108,7 +106,7 @@ fn main() -> GameResult {
     world.insert(resources::Dead(false));
     {
         use ggez::graphics::{Font, Scale, Text};
-        let font = Font::new(ctx, "/fonts/Xolonium-Regular.ttf").unwrap();
+        let font = Font::new(ctx, "/fonts/Xolonium-Regular.ttf").expect("error loading font");
         let mut text = Text::new(format!("HP: {}\nWave: {}", 5, 0));
         text.set_font(font, Scale::uniform(48.0));
         world.insert(resources::HPText {
@@ -131,15 +129,15 @@ fn main() -> GameResult {
         let mut sounds = HashMap::new();
         sounds.insert(
             "shoot".to_string(),
-            SoundData::new(ctx, "/shoot2.ogg").unwrap(),
+            SoundData::new(ctx, "/shoot2.ogg").expect("error loading shoot2.ogg"),
         );
         sounds.insert(
             "boom".to_string(),
-            SoundData::new(ctx, "/boom.ogg").unwrap(),
+            SoundData::new(ctx, "/boom.ogg").expect("error loading boom.ogg"),
         );
         sounds.insert(
             "dead".to_string(),
-            SoundData::new(ctx, "/dead.ogg").unwrap(),
+            SoundData::new(ctx, "/dead.ogg").expect("error loaindg dead.ogg"),
         );
         world.insert(resources::Sounds(sounds));
         world.insert(resources::QueuedSounds(Vec::new()));

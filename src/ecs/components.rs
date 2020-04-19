@@ -253,10 +253,15 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
     )
 }
 
+#[allow(dead_code)]
 pub fn create_enemy(world: &mut World, enemy: EnemyTuple) -> Entity {
     let spritesheet = {
         let spritesheets = world.fetch::<SpriteSheets>();
-        spritesheets.0.get("enemies").unwrap().clone()
+        spritesheets
+            .0
+            .get("enemies")
+            .expect("error getting spritesheet")
+            .clone()
     };
 
     world

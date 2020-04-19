@@ -38,15 +38,26 @@ impl<'a> System<'a> for SpawnBulletSys {
             mut queued_sounds,
         ): Self::SystemData,
     ) {
-        let player_data = &mut players.get_mut(player_entity.0).unwrap();
-        let player_vel = vels.get(player_entity.0).unwrap().0;
+        let player_data = &mut players
+            .get_mut(player_entity.0)
+            .expect("error getting player data");
+        let player_vel = vels
+            .get(player_entity.0)
+            .expect("error getting player vel")
+            .0;
 
         if player_data.reload_timer == 0 {
-            let sound = sounds.0.get("shoot").unwrap();
-            queued_sounds.0.push(sound.clone());
+            if let Some(sound) = sounds.0.get("shoot") {
+                queued_sounds.0.push(sound.clone());
+            } else {
+                log::warn!("error getting shot sound");
+            }
 
             player_data.reload_timer = player_data.reload_speed;
-            let player_pos = positions.get(player_entity.0).unwrap().0;
+            let player_pos = positions
+                .get(player_entity.0)
+                .expect("error getting player position")
+                .0;
             let bullet_pos: Point = player_pos + Vector::new(12.5, 5.0);
             let bullet = new_bullet(
                 player_data.bullet_type,
@@ -55,7 +66,11 @@ impl<'a> System<'a> for SpawnBulletSys {
                 DamagesWho::Enemy,
             );
 
-            let spritesheet = spritesheets.0.get("bullets").unwrap().clone();
+            let spritesheet = spritesheets
+                .0
+                .get("bullets")
+                .expect("error getting bullet spritesheet")
+                .clone();
 
             entities
                 .build_entity()
@@ -104,10 +119,19 @@ impl<'a> System<'a> for PlayerCollSys {
             return;
         }
 
-        let player_pos = positions.get(player_entity.0).unwrap().0;
-        let player_hitbox = hitboxes.get(player_entity.0).unwrap();
-        let player_vel = velocities.get_mut(player_entity.0).unwrap();
-        let mut player_hp = *hp_storage.get(player_entity.0).unwrap();
+        let player_pos = positions
+            .get(player_entity.0)
+            .expect("error getting player pos")
+            .0;
+        let player_hitbox = hitboxes
+            .get(player_entity.0)
+            .expect("error getting player hitbox");
+        let player_vel = velocities
+            .get_mut(player_entity.0)
+            .expect("error getting player vel");
+        let mut player_hp = *hp_storage
+            .get(player_entity.0)
+            .expect("error getting player hp");
 
         let player_rect = Rect::new(
             player_pos.x + player_hitbox.0.x,
@@ -138,6 +162,8 @@ impl<'a> System<'a> for PlayerCollSys {
                 }
             });
 
-        *hp_storage.get_mut(player_entity.0).unwrap() = player_hp;
+        *hp_storage
+            .get_mut(player_entity.0)
+            .expect("error getting player hp") = player_hp;
     }
 }

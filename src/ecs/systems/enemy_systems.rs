@@ -95,8 +95,14 @@ impl<'a> System<'a> for EnemyShootSys {
             })
             .collect();
 
-        let player_pos = positions.get(player_entity.0).unwrap().0;
-        let player_vel = vels.get(player_entity.0).unwrap().0;
+        let player_pos = positions
+            .get(player_entity.0)
+            .expect("error getting player position")
+            .0;
+        let player_vel = vels
+            .get(player_entity.0)
+            .expect("error getting player velocity")
+            .0;
 
         new_bullets.iter().for_each(|(pos, bullet_type)| {
             let vel = match bullet_type {
@@ -134,7 +140,11 @@ impl<'a> System<'a> for EnemyShootSys {
                 vel,
                 DamagesWho::Player,
             );
-            let spritesheet = spritesheets.0.get("bullets").unwrap().clone();
+            let spritesheet = spritesheets
+                .0
+                .get("bullets")
+                .expect("error getting bullet spritesheet")
+                .clone();
             entities
                 .build_entity()
                 .with(bullet_tuple.0, &mut positions)

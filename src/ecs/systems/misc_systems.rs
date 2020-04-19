@@ -75,7 +75,9 @@ impl<'a> System<'a> for BulletCollSys {
                 if !(-10.0..crate::SCREEN_WIDTH).contains(&pos.0.x)
                     || !(-10.0..crate::SCREEN_HEIGHT).contains(&pos.0.y)
                 {
-                    entities.delete(bullet_entity).unwrap();
+                    if entities.delete(bullet_entity).is_err() {
+                        log::warn!("error deleting offscreen bullet entity")
+                    }
                 } else {
                     (&mut hp_storage, &positions, &hitboxes, &entities)
                         .join()
@@ -100,7 +102,9 @@ impl<'a> System<'a> for BulletCollSys {
                                         hp_text.needs_redraw = true;
                                     }
                                     explosion_positions.push(pos.0 + Vector::new(-20.0, -20.0));
-                                    entities.delete(bullet_entity).unwrap();
+                                    if entities.delete(bullet_entity).is_err() {
+                                        log::warn!("error deleting collided bullet entity")
+                                    }
                                 }
                             }
                         });
@@ -112,15 +116,22 @@ impl<'a> System<'a> for BulletCollSys {
                 .build_entity()
                 .with(Position(*pos), &mut positions)
                 .with(
-                    animated_sprites.0.get("explosion").unwrap().clone(),
+                    animated_sprites
+                        .0
+                        .get("explosion")
+                        .expect("error getting explosion sprite")
+                        .clone(),
                     &mut animated_sprite_storage,
                 )
                 .build();
         });
 
         if !explosion_positions.is_empty() {
-            let sound = sounds.0.get("boom").unwrap();
-            queued_sounds.0.push(sound.clone());
+            if let Some(sound) = sounds.0.get("boom") {
+                queued_sounds.0.push(sound.clone());
+            } else {
+                log::warn!("error playing explosion sound");
+            }
         }
     }
 }
@@ -136,7 +147,9 @@ impl<'a> System<'a> for AnimationSys {
                 animated_sprite.current_frame += 1;
                 if animated_sprite.current_frame == animated_sprite.num_frames {
                     if animated_sprite.temporary {
-                        entities.delete(entity).unwrap();
+                        if entities.delete(entity).is_err() {
+                            log::warn!("error deleting finished animation entity");
+                        }
                     } else {
                         animated_sprite.current_frame = 0;
                     }
@@ -186,11 +199,14 @@ impl<'a> System<'a> for HPKillSys {
     ) {
         (&hp_storage, &entities).join().for_each(|(hp, entity)| {
             if hp.remaining == 0 {
-                entities.delete(entity).unwrap();
+                entities.delete(entity).expect("error deleting dead entity");
                 if entity == player_entity.0 {
                     dead.0 = true;
-                    let sound = sounds.0.get("dead").unwrap();
-                    queued_sounds.0.push(sound.clone());
+                    if let Some(sound) = sounds.0.get("dead") {
+                        queued_sounds.0.push(sound.clone());
+                    } else {
+                        log::warn!("error getting death sound");
+                    }
                 }
             }
         });
