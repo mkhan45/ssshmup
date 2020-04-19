@@ -127,6 +127,19 @@ fn main() -> GameResult {
         use ggez::audio::SoundData;
 
         let mut sounds = HashMap::new();
+        {
+            use ggez::audio::{Source, SoundSource};
+            let bg_music_source = Source::new(ctx, "/bgmusic.ogg");
+            if let Ok(mut bg_music_source) = bg_music_source {
+                bg_music_source.set_repeat(true);
+                bg_music_source.set_volume(0.2);
+                if bg_music_source.play_detached().is_err() {
+                    log::warn!("error playing background music");
+                }
+            } else {
+                log::warn!("error loading background music");
+            }
+        }
         sounds.insert(
             "shoot".to_string(),
             SoundData::new(ctx, "/shoot2.ogg").expect("error loading shoot2.ogg"),
@@ -137,7 +150,7 @@ fn main() -> GameResult {
         );
         sounds.insert(
             "dead".to_string(),
-            SoundData::new(ctx, "/dead.ogg").expect("error loaindg dead.ogg"),
+            SoundData::new(ctx, "/dead.ogg").expect("error loading dead.ogg"),
         );
         world.insert(resources::Sounds(sounds));
         world.insert(resources::QueuedSounds(Vec::new()));

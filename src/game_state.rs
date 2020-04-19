@@ -127,10 +127,7 @@ impl EventHandler for GameState<'_, '_> {
                         .expect("error getting enemy spritesheet")
                         .clone();
 
-                    {
-                        let player_hp = hp_storage
-                            .get_mut(self.world.fetch::<PlayerEntity>().0)
-                            .expect("error incrementing player hp");
+                    if let Some(mut player_hp) = hp_storage.get_mut(self.world.fetch::<PlayerEntity>().0) {
                         player_hp.remaining += 1;
                     }
 
@@ -185,7 +182,7 @@ impl EventHandler for GameState<'_, '_> {
                                 &mut sprites,
                             )
                             .build();
-                    });
+                        });
                 }
             } else if self.world.fetch::<FramesToNextWave>().0 == 0 {
                 self.world.insert(FramesToNextWave::default());
@@ -273,12 +270,12 @@ impl EventHandler for GameState<'_, '_> {
                                 ctx,
                                 img,
                                 graphics::DrawParam::new()
-                                    .scale([3.0, 3.0])
-                                    .dest(pos.0)
-                                    .color(draw_color),
+                                .scale([3.0, 3.0])
+                                .dest(pos.0)
+                                .color(draw_color),
                             )
-                            .expect("error drawing sprite");
-                        }
+                                .expect("error drawing sprite");
+                            }
                         Sprite::SpriteSheetInstance(spritesheet, index) => {
                             let mut spritesheet =
                                 spritesheet.lock().expect("error locking spritesheet");
@@ -287,10 +284,10 @@ impl EventHandler for GameState<'_, '_> {
                                 Rect::new(frame_width * *index as f32, 0.0, frame_width, 1.0);
                             spritesheet.batch.add(
                                 DrawParam::new()
-                                    .src(src_rect)
-                                    .scale([3.0, 3.0])
-                                    .dest(pos.0)
-                                    .color(draw_color),
+                                .src(src_rect)
+                                .scale([3.0, 3.0])
+                                .dest(pos.0)
+                                .color(draw_color),
                             );
                         }
                     }
@@ -310,12 +307,12 @@ impl EventHandler for GameState<'_, '_> {
                         ctx,
                         &animated_sprite.spritesheet,
                         graphics::DrawParam::new()
-                            .src(src_rect)
-                            .scale([3.5, 3.5])
-                            .dest(pos.0),
+                        .src(src_rect)
+                        .scale([3.5, 3.5])
+                        .dest(pos.0),
                     )
-                    .expect("error drawing animated sprite");
-                });
+                        .expect("error drawing animated sprite");
+                    });
 
             if cfg!(feature = "draw_hitboxes") {
                 let hitboxes = self.world.read_storage::<Hitbox>();
@@ -354,7 +351,7 @@ impl EventHandler for GameState<'_, '_> {
             &*text,
             graphics::DrawParam::new().dest([50.0, crate::SCREEN_HEIGHT - 100.0]),
         )
-        .expect("error drawing hp text");
+            .expect("error drawing hp text");
 
         if self.world.fetch::<Dead>().0 {
             let dead_text = &self.world.fetch::<DeadText>().0;
@@ -363,17 +360,17 @@ impl EventHandler for GameState<'_, '_> {
                 ctx,
                 &text[0],
                 graphics::DrawParam::new()
-                    .dest([crate::SCREEN_WIDTH / 4.0, crate::SCREEN_HEIGHT / 4.0]),
+                .dest([crate::SCREEN_WIDTH / 4.0, crate::SCREEN_HEIGHT / 4.0]),
             )
-            .expect("error drawing dead text");
+                .expect("error drawing dead text");
 
             graphics::draw(
                 ctx,
                 &text[1],
                 graphics::DrawParam::new()
-                    .dest([crate::SCREEN_WIDTH / 5.0, crate::SCREEN_HEIGHT / 2.5]),
+                .dest([crate::SCREEN_WIDTH / 5.0, crate::SCREEN_HEIGHT / 2.5]),
             )
-            .expect("error drawing dead text");
+                .expect("error drawing dead text");
         }
 
         graphics::present(ctx)?;
@@ -393,16 +390,16 @@ impl EventHandler for GameState<'_, '_> {
                 ctx,
                 graphics::Rect::new(-excess_width / 2.0, 0.0, new_width, SCREEN_HEIGHT),
             )
-            .expect("error setting screen coordinates on resize");
-        } else {
-            // height is greater than usual
-            let new_height = SCREEN_HEIGHT * aspect_ratio;
-            let excess_height = new_height - SCREEN_HEIGHT;
-            ggez::graphics::set_screen_coordinates(
-                ctx,
-                graphics::Rect::new(0.0, -excess_height / 2.0, SCREEN_WIDTH, new_height),
-            )
-            .expect("error setting screen coordinates on resize");
+                .expect("error setting screen coordinates on resize");
+            } else {
+                // height is greater than usual
+                let new_height = SCREEN_HEIGHT * aspect_ratio;
+                let excess_height = new_height - SCREEN_HEIGHT;
+                ggez::graphics::set_screen_coordinates(
+                    ctx,
+                    graphics::Rect::new(0.0, -excess_height / 2.0, SCREEN_WIDTH, new_height),
+                )
+                    .expect("error setting screen coordinates on resize");
         }
     }
 
