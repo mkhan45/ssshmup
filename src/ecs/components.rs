@@ -146,11 +146,12 @@ pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, damages_who: DamagesW
     };
 
     let sprite_index = match ty {
-        BulletType::BasicBullet | BulletType::BouncingBullet(_) => 0,
+        BulletType::BasicBullet => 0,
         BulletType::AimedBullet => 1,
         BulletType::PredictBullet => 2,
         BulletType::TrackingBullet => 3,
         BulletType::PlayerBullet => 1,
+        BulletType::BouncingBullet(_) => 4,
     };
 
     let (offset, width, height) = match ty {
@@ -193,7 +194,6 @@ pub enum EnemyType {
 pub enum MovementType {
     HLine(std::ops::Range<f32>, f32),
     VLine(std::ops::Range<f32>, f32),
-    Circle(Point, f32, f32, f32),
 }
 
 impl MovementType {
@@ -203,10 +203,6 @@ impl MovementType {
 
     pub fn vertical(center: f32, height: f32, speed: f32) -> Self {
         MovementType::VLine((center - height / 2.0)..(center + height / 2.0), speed)
-    }
-
-    pub fn circle(center: Point, radius: f32, speed: f32) -> Self {
-        MovementType::Circle(center, radius, speed, 0.0)
     }
 }
 
@@ -230,13 +226,12 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
         EnemyType::PredictEnemy => (3, (55.0, 43.0), BulletType::PredictBullet, 90),
         EnemyType::TrackingEnemy => (3, (55.0, 43.0), BulletType::TrackingBullet, 180),
         EnemyType::AimEnemy2 => (5, (55.0, 43.0), BulletType::AimedBullet, 90),
-        EnemyType::BounceEnemy => (3, (55.0, 43.0), BulletType::BouncingBullet(2), 300),
+        EnemyType::BounceEnemy => (3, (55.0, 43.0), BulletType::BouncingBullet(2), 180),
     };
 
     let vel = match movement {
         MovementType::HLine(_, speed) => [speed, 0.0].into(),
         MovementType::VLine(_, speed) => [0.0, speed].into(),
-        MovementType::Circle(_, _, speed, _) => [0.0, speed].into(),
     };
 
     let sprite_index = match ty {

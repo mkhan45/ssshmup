@@ -10,32 +10,28 @@ pub struct SpawnBulletSys;
 impl<'a> System<'a> for SpawnBulletSys {
     type SystemData = (
         WriteStorage<'a, Player>,
-        WriteStorage<'a, Position>,
-        WriteStorage<'a, Velocity>,
-        WriteStorage<'a, Bullet>,
-        WriteStorage<'a, Sprite>,
-        WriteStorage<'a, Hitbox>,
+        ReadStorage<'a, Position>,
+        ReadStorage<'a, Velocity>,
         Entities<'a>,
         Read<'a, PlayerEntity>,
         Read<'a, SpriteSheets>,
         Read<'a, Sounds>,
         Write<'a, QueuedSounds>,
+        Read<'a, LazyUpdate>,
     );
 
     fn run(
         &mut self,
         (
             mut players,
-            mut positions,
-            mut vels,
-            mut bullets,
-            mut sprite_res,
-            mut hitboxes,
+            positions,
+            vels,
             entities,
             player_entity,
             spritesheets,
             sounds,
             mut queued_sounds,
+            lazy_update,
         ): Self::SystemData,
     ) {
         let player_data = &mut players
@@ -72,17 +68,12 @@ impl<'a> System<'a> for SpawnBulletSys {
                 .expect("error getting bullet spritesheet")
                 .clone();
 
-            entities
-                .build_entity()
-                .with(bullet.0, &mut positions)
-                .with(bullet.1, &mut hitboxes)
-                .with(bullet.2, &mut vels)
-                .with(bullet.3, &mut bullets)
-                .with(
-                    Sprite::SpriteSheetInstance(spritesheet, bullet.4),
-                    &mut sprite_res,
-                )
-                .build();
+            let entity = entities.create();
+            lazy_update.insert(entity, bullet.0);
+            lazy_update.insert(entity, bullet.1);
+            lazy_update.insert(entity, bullet.2);
+            lazy_update.insert(entity, bullet.3);
+            lazy_update.insert(entity, Sprite::SpriteSheetInstance(spritesheet, bullet.4));
         }
     }
 }

@@ -77,7 +77,7 @@ fn main() -> GameResult {
         spritesheets.insert(
             "bullets".to_string(),
             Arc::new(Mutex::new(resources::SpriteSheet {
-                width: 4,
+                width: 8,
                 batch: bullet_spritebatch,
             })),
         );
@@ -160,7 +160,7 @@ fn main() -> GameResult {
 
     let mut dispatcher = DispatcherBuilder::new()
         .with(systems::EnemyMoveSys, "enemy_move_sys", &[])
-        // .with(systems::BulletTrackingSys, "tracking_bullet_sys", &[])
+        .with(systems::BulletTrackingSys, "tracking_bullet_sys", &[])
         .with(systems::BounceBulletSys, "bouncing_bullet_sys", &[])
         .with(systems::IntegrateSys, "integrate_system", &[])
         .with(systems::StarMoveSys, "star_system", &[])

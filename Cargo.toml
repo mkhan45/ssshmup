@@ -18,7 +18,9 @@ opt-level = 3
 
 [profile.release]
 lto = "fat"
+default-features = false
 
 [features]
+default = ["print_fps"]
 draw_hitboxes = []
 print_fps = []

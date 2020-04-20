@@ -35,14 +35,14 @@ impl<'a> System<'a> for BulletCollSys {
         ReadStorage<'a, Bullet>,
         ReadStorage<'a, Hitbox>,
         WriteStorage<'a, HP>,
-        WriteStorage<'a, Position>,
-        WriteStorage<'a, AnimatedSprite>,
+        ReadStorage<'a, Position>,
         Entities<'a>,
         Read<'a, AnimatedSprites>,
         Read<'a, PlayerEntity>,
         Write<'a, HPText>,
         Read<'a, Sounds>,
         Write<'a, QueuedSounds>,
+        Read<'a, LazyUpdate>,
     );
 
     fn run(
@@ -51,18 +51,21 @@ impl<'a> System<'a> for BulletCollSys {
             bullets,
             hitboxes,
             mut hp_storage,
-            mut positions,
-            mut animated_sprite_storage,
+            positions,
             entities,
             animated_sprites,
             player_entity,
             mut hp_text,
             sounds,
             mut queued_sounds,
+            lazy_update,
         ): Self::SystemData,
     ) {
-        let mut explosion_positions: Vec<Point> = Vec::new();
-
+        let mut atleast_one_explosion = false;
+        let sprite = animated_sprites
+            .0
+            .get("explosion")
+            .expect("error getting explosion sprite");
         (&bullets, &positions, &hitboxes, &entities)
             .join()
             .for_each(|(bullet, pos, bullet_hitbox, bullet_entity)| {
@@ -101,32 +104,20 @@ impl<'a> System<'a> for BulletCollSys {
                                     if entity == player_entity.0 {
                                         hp_text.needs_redraw = true;
                                     }
-                                    explosion_positions.push(pos.0 + Vector::new(-20.0, -20.0));
                                     if entities.delete(bullet_entity).is_err() {
                                         log::warn!("error deleting collided bullet entity")
                                     }
+                                    let explosion = entities.create();
+                                    lazy_update.insert(explosion, *pos);
+                                    lazy_update.insert(explosion, sprite.clone());
+                                    atleast_one_explosion = true;
                                 }
                             }
                         });
                 }
             });
 
-        explosion_positions.iter().for_each(|pos| {
-            entities
-                .build_entity()
-                .with(Position(*pos), &mut positions)
-                .with(
-                    animated_sprites
-                        .0
-                        .get("explosion")
-                        .expect("error getting explosion sprite")
-                        .clone(),
-                    &mut animated_sprite_storage,
-                )
-                .build();
-        });
-
-        if !explosion_positions.is_empty() {
+        if atleast_one_explosion {
             if let Some(sound) = sounds.0.get("boom") {
                 queued_sounds.0.push(sound.clone());
             } else {

@@ -38,12 +38,6 @@ impl<'a> System<'a> for EnemyMoveSys {
                         vel.0.y *= -1.0;
                     }
                 }
-                MovementType::Circle(_, rad, speed, angle) => {
-                    // TODO some math here
-                    vel.0.y = angle.sin() * *rad;
-                    vel.0.x = angle.cos() * *rad;
-                    *angle += *speed / 20.0 * std::f32::consts::PI;
-                }
             });
     }
 }
@@ -51,31 +45,27 @@ impl<'a> System<'a> for EnemyMoveSys {
 pub struct EnemyShootSys;
 impl<'a> System<'a> for EnemyShootSys {
     type SystemData = (
-        WriteStorage<'a, Position>,
+        ReadStorage<'a, Position>,
         WriteStorage<'a, Enemy>,
-        WriteStorage<'a, Velocity>,
-        WriteStorage<'a, Bullet>,
-        WriteStorage<'a, Sprite>,
-        WriteStorage<'a, Hitbox>,
+        ReadStorage<'a, Velocity>,
         Entities<'a>,
         Read<'a, SpriteSheets>,
         Read<'a, PlayerEntity>,
         Read<'a, Dead>,
+        Read<'a, LazyUpdate>,
     );
 
     fn run(
         &mut self,
         (
-            mut positions,
+            positions,
             mut enemies,
-            mut vels,
-            mut bullets,
-            mut sprite_storage,
-            mut hitboxes,
+            vels,
             entities,
             spritesheets,
             player_entity,
             dead,
+            lazy_update,
         ): Self::SystemData,
     ) {
         if dead.0 {
@@ -180,7 +170,7 @@ impl<'a> System<'a> for EnemyShootSys {
                         direction.x *= -1.0;
                     }
 
-                    let speed = 5.0;
+                    let speed = 8.0;
                     [speed * direction.x, speed * direction.y].into()
                 }
             };
@@ -195,17 +185,16 @@ impl<'a> System<'a> for EnemyShootSys {
                 .get("bullets")
                 .expect("error getting bullet spritesheet")
                 .clone();
-            entities
-                .build_entity()
-                .with(bullet_tuple.0, &mut positions)
-                .with(bullet_tuple.1, &mut hitboxes)
-                .with(bullet_tuple.3, &mut bullets)
-                .with(bullet_tuple.2, &mut vels)
-                .with(
-                    Sprite::SpriteSheetInstance(spritesheet, bullet_tuple.4),
-                    &mut sprite_storage,
-                )
-                .build();
+
+            let bullet = entities.create();
+            lazy_update.insert(bullet, bullet_tuple.0);
+            lazy_update.insert(bullet, bullet_tuple.1);
+            lazy_update.insert(bullet, bullet_tuple.2);
+            lazy_update.insert(bullet, bullet_tuple.3);
+            lazy_update.insert(
+                bullet,
+                Sprite::SpriteSheetInstance(spritesheet, bullet_tuple.4),
+            );
         });
     }
 }
