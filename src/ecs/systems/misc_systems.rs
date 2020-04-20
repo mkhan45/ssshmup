@@ -154,21 +154,69 @@ impl<'a> System<'a> for BulletTrackingSys {
     type SystemData = (
         WriteStorage<'a, Velocity>,
         ReadStorage<'a, Position>,
-        ReadStorage<'a, Bullet>,
+        WriteStorage<'a, Bullet>,
         Read<'a, PlayerEntity>,
+        Read<'a, AnimatedSprites>,
+        Read<'a, Sounds>,
+        Write<'a, QueuedSounds>,
+        Entities<'a>,
+        Read<'a, LazyUpdate>,
     );
 
-    fn run(&mut self, (mut vels, positions, bullets, player_entity): Self::SystemData) {
+    fn run(
+        &mut self,
+        (
+            mut vels,
+            positions,
+            mut bullets,
+            player_entity,
+            animated_sprites,
+            sounds,
+            mut queued_sounds,
+            entities,
+            lazy_update,
+        ): Self::SystemData,
+    ) {
         if let Some(player_pos) = positions.get(player_entity.0) {
             let player_pos = player_pos.0;
-            (&mut vels, &positions, &bullets)
-                .par_join()
-                .filter(|(_, _, bullet)| bullet.ty == BulletType::TrackingBullet)
-                .for_each(|(vel, pos, _)| {
-                    let direction = (player_pos - pos.0).normalize();
-                    let target_vel = direction * 8.0;
-                    vel.0 += (target_vel - vel.0) * 0.02;
+            let mut atleast_one_explosion = std::sync::atomic::AtomicBool::new(false);
+            let explosion_sprite = animated_sprites
+                .0
+                .get("explosion")
+                .expect("error getting explosion sprite");
+
+            (&mut vels, &positions, &mut bullets, &entities)
+                .join()
+                .for_each(|(vel, pos, bullet, entity)| {
+                    let mut new_ty: Option<BulletType> = None;
+                    if let BulletType::TrackingBullet(frames_remaining) = bullet.ty {
+                        if frames_remaining == 0 {
+                            let explosion_entity = entities.create();
+                            lazy_update.insert(explosion_entity, *pos);
+                            lazy_update.insert(explosion_entity, explosion_sprite.clone());
+                            entities
+                                .delete(entity)
+                                .expect("error deleting dead tracking bullet");
+                            *atleast_one_explosion.get_mut() = true;
+                            return;
+                        }
+                        new_ty = Some(BulletType::TrackingBullet(frames_remaining - 1));
+                        let direction = (player_pos - pos.0).normalize();
+                        let target_vel = direction * 8.0;
+                        vel.0 += (target_vel - vel.0) * 0.02;
+                    }
+                    if let Some(ty) = new_ty {
+                        bullet.ty = ty;
+                    }
                 });
+
+            if atleast_one_explosion.into_inner() {
+                if let Some(explosion_sound) = sounds.0.get("boom") {
+                    queued_sounds.0.push(explosion_sound.clone());
+                } else {
+                    log::warn!("error getting explosion sound");
+                }
+            }
         }
     }
 }

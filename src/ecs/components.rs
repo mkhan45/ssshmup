@@ -105,7 +105,7 @@ pub enum BulletType {
     BasicBullet,
     AimedBullet,
     PredictBullet,
-    TrackingBullet,
+    TrackingBullet(u16),
     BouncingBullet(u8),
 }
 
@@ -141,7 +141,7 @@ pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, damages_who: DamagesW
         BulletType::BasicBullet => 1,
         BulletType::AimedBullet => 1,
         BulletType::PredictBullet => 1,
-        BulletType::TrackingBullet => 1,
+        BulletType::TrackingBullet(_) => 1,
         BulletType::BouncingBullet(_) => 1,
     };
 
@@ -149,7 +149,7 @@ pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, damages_who: DamagesW
         BulletType::BasicBullet => 0,
         BulletType::AimedBullet => 1,
         BulletType::PredictBullet => 2,
-        BulletType::TrackingBullet => 3,
+        BulletType::TrackingBullet(_) => 3,
         BulletType::PlayerBullet => 1,
         BulletType::BouncingBullet(_) => 4,
     };
@@ -159,7 +159,7 @@ pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, damages_who: DamagesW
         | BulletType::BasicBullet
         | BulletType::AimedBullet
         | BulletType::PredictBullet
-        | BulletType::TrackingBullet
+        | BulletType::TrackingBullet(_)
         | BulletType::BouncingBullet(_) => (Point::new(5.0, 5.0), 15.0, 15.0),
     };
 
@@ -224,7 +224,7 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
         EnemyType::BasicEnemy2 => (5, (55.0, 43.0), BulletType::BasicBullet, 90),
         EnemyType::AimEnemy => (3, (55.0, 43.0), BulletType::AimedBullet, 180),
         EnemyType::PredictEnemy => (3, (55.0, 43.0), BulletType::PredictBullet, 90),
-        EnemyType::TrackingEnemy => (3, (55.0, 43.0), BulletType::TrackingBullet, 180),
+        EnemyType::TrackingEnemy => (3, (55.0, 43.0), BulletType::TrackingBullet(5 * 60), 180),
         EnemyType::AimEnemy2 => (5, (55.0, 43.0), BulletType::AimedBullet, 90),
         EnemyType::BounceEnemy => (3, (55.0, 43.0), BulletType::BouncingBullet(2), 180),
     };

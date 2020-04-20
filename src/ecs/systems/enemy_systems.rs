@@ -98,10 +98,10 @@ impl<'a> System<'a> for EnemyShootSys {
             let vel = match bullet_type {
                 BulletType::PlayerBullet => unreachable!(),
                 BulletType::BasicBullet => [0.0, 8.0].into(),
-                BulletType::AimedBullet | BulletType::TrackingBullet => {
+                BulletType::AimedBullet | BulletType::TrackingBullet(_) => {
                     let speed = match bullet_type {
                         BulletType::AimedBullet => 9.0,
-                        BulletType::TrackingBullet => 5.0,
+                        BulletType::TrackingBullet(_) => 5.0,
                         _ => unreachable!(),
                     };
                     (player_pos - pos).normalize() * speed
