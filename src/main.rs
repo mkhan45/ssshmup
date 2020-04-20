@@ -18,6 +18,8 @@ use ecs::{components, resources, systems};
 const SCREEN_WIDTH: f32 = 1024.0 * 0.75;
 const SCREEN_HEIGHT: f32 = 1024.0 * 0.75;
 
+const VOLUME_MULTIPLIER: f32 = 0.2;
+
 fn main() -> GameResult {
     simple_logger::init_with_level(log::Level::Warn).expect("error initializing logger");
     let (ctx, event_loop) = &mut ggez::ContextBuilder::new("Game", "Fish")
@@ -128,11 +130,11 @@ fn main() -> GameResult {
 
         let mut sounds = HashMap::new();
         {
-            use ggez::audio::{Source, SoundSource};
+            use ggez::audio::{SoundSource, Source};
             let bg_music_source = Source::new(ctx, "/bgmusic.ogg");
             if let Ok(mut bg_music_source) = bg_music_source {
                 bg_music_source.set_repeat(true);
-                bg_music_source.set_volume(0.2);
+                bg_music_source.set_volume(0.2 * VOLUME_MULTIPLIER);
                 if bg_music_source.play_detached().is_err() {
                     log::warn!("error playing background music");
                 }
@@ -158,7 +160,8 @@ fn main() -> GameResult {
 
     let mut dispatcher = DispatcherBuilder::new()
         .with(systems::EnemyMoveSys, "enemy_move_sys", &[])
-        .with(systems::BulletTrackingSys, "tracking_bullet_sys", &[])
+        // .with(systems::BulletTrackingSys, "tracking_bullet_sys", &[])
+        .with(systems::BounceBulletSys, "bouncing_bullet_sys", &[])
         .with(systems::IntegrateSys, "integrate_system", &[])
         .with(systems::StarMoveSys, "star_system", &[])
         .with(systems::ReloadTimerSys, "reload_timer_sys", &[])
@@ -167,7 +170,7 @@ fn main() -> GameResult {
         .with(
             systems::BulletCollSys,
             "bullet_coll_sys",
-            &["integrate_system"],
+            &["integrate_system", "bouncing_bullet_sys"],
         )
         .with(
             systems::PlayerCollSys,

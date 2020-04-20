@@ -1,6 +1,6 @@
 [package]
 name = "ssshmup"
-version = "0.5.0"
+version = "0.6.0"
 authors = ["Mikail Khan <mikail.khan45@gmail.com>"]
 edition = "2018"
 

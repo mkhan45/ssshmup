@@ -72,7 +72,7 @@ impl<'a> System<'a> for BulletCollSys {
                     bullet_hitbox.1,
                     bullet_hitbox.2,
                 );
-                if !(-10.0..crate::SCREEN_WIDTH).contains(&pos.0.x)
+                if !(-10.0..crate::SCREEN_WIDTH + 10.0).contains(&pos.0.x)
                     || !(-10.0..crate::SCREEN_HEIGHT).contains(&pos.0.y)
                 {
                     if entities.delete(bullet_entity).is_err() {
@@ -210,5 +210,43 @@ impl<'a> System<'a> for HPKillSys {
                 }
             }
         });
+    }
+}
+
+pub struct BounceBulletSys;
+impl<'a> System<'a> for BounceBulletSys {
+    type SystemData = (
+        WriteStorage<'a, Bullet>,
+        ReadStorage<'a, Position>,
+        WriteStorage<'a, Velocity>,
+        Entities<'a>,
+    );
+
+    fn run(&mut self, (mut bullets, positions, mut vels, entities): Self::SystemData) {
+        (&mut bullets, &positions, &mut vels, &entities)
+            .join()
+            .for_each(|(bullet, pos, vel, entity)| {
+                // can't mutate enum tuples in if let statement?
+                // something weird happens but workaround is ok
+                let mut new_bounce_ty: Option<BulletType> = None;
+                if let BulletType::BouncingBullet(num_bounces) = bullet.ty {
+                    if pos.0.x > crate::SCREEN_WIDTH && vel.0.x > 0.0
+                        || pos.0.x < 0.0 && vel.0.x < 0.0
+                    {
+                        vel.0.x *= -1.0;
+                        new_bounce_ty = Some(BulletType::BouncingBullet(
+                            num_bounces - (1).min(num_bounces),
+                        ));
+                        if num_bounces == 0 {
+                            entities
+                                .delete(entity)
+                                .expect("error deleting overbounced bullet");
+                        }
+                    }
+                }
+                if let Some(ty) = new_bounce_ty {
+                    bullet.ty = ty;
+                }
+            });
     }
 }

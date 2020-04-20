@@ -133,6 +133,56 @@ impl<'a> System<'a> for EnemyShootSys {
 
                     direction * bullet_speed
                 }
+                BulletType::BouncingBullet(num_bounces) => {
+                    use rand::prelude::*;;
+                    let mut rng = rand::thread_rng();
+                    let direction_is_right = rng.gen_bool(0.5); // false is left
+
+                    //  |         O  |     |       O
+                    //  |          \ |     |        \
+                    //  |           \|     |         \
+                    //  |           /|     |          \
+                    //  |          / |  -> |           \
+                    //  |         /  |     |            \
+                    //  |        /   |     |             \
+                    //  |       /    |     |              \
+                    //  |      O     |     |               O
+                    //  unroll the screen, the slope stays constant
+
+                    let y_dist = ((player_pos.y - 45.0 / 2.0) - pos.y).abs();
+
+                    let initial_x_dist = if direction_is_right {
+                        crate::SCREEN_WIDTH - pos.x
+                    } else {
+                        pos.x
+                    };
+
+                    let final_x_dist = {
+                        let end_comes_from_right = direction_is_right && num_bounces % 2 == 1
+                            || !direction_is_right && num_bounces % 2 == 0;
+
+                        if end_comes_from_right {
+                            crate::SCREEN_WIDTH - player_pos.x
+                        } else {
+                            player_pos.x
+                        }
+                    };
+
+                    // 1 bounce -> 0 * screen_width
+                    // 2 bounces -> 1 * screen_width
+                    // 3 bounces -> 2 * screen_width
+                    let mid_x_dists = crate::SCREEN_WIDTH * (*num_bounces as f32 - (1.0)).max(0.0);
+
+                    let total_x_dist = initial_x_dist + mid_x_dists + final_x_dist;
+
+                    let mut direction = Vector::new(total_x_dist, y_dist).normalize();
+                    if !direction_is_right {
+                        direction.x *= -1.0;
+                    }
+
+                    let speed = 5.0;
+                    [speed * direction.x, speed * direction.y].into()
+                }
             };
             let bullet_tuple = new_bullet(
                 *bullet_type,
@@ -188,6 +238,7 @@ impl<'a> System<'a> for WaveCalcSys {
                 EnemyType::BasicEnemy2 => 2,
                 EnemyType::AimEnemy => 2,
                 EnemyType::AimEnemy2 => 4,
+                EnemyType::BounceEnemy => 4,
                 EnemyType::PredictEnemy => 5,
                 EnemyType::TrackingEnemy => 5,
             }
@@ -201,6 +252,7 @@ impl<'a> System<'a> for WaveCalcSys {
                 EnemyType::AimEnemy2,
                 EnemyType::PredictEnemy,
                 EnemyType::TrackingEnemy,
+                EnemyType::BounceEnemy,
             ]
             .iter()
             .filter_map(|enemy_ty| {

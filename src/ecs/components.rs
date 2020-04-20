@@ -94,12 +94,19 @@ impl HP {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct BounceInfo {
+    pub num_bounces: u8,
+    pub used_bounces: u8,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BulletType {
     PlayerBullet,
     BasicBullet,
     AimedBullet,
     PredictBullet,
     TrackingBullet,
+    BouncingBullet(u8),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -135,10 +142,11 @@ pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, damages_who: DamagesW
         BulletType::AimedBullet => 1,
         BulletType::PredictBullet => 1,
         BulletType::TrackingBullet => 1,
+        BulletType::BouncingBullet(_) => 1,
     };
 
     let sprite_index = match ty {
-        BulletType::BasicBullet => 0,
+        BulletType::BasicBullet | BulletType::BouncingBullet(_) => 0,
         BulletType::AimedBullet => 1,
         BulletType::PredictBullet => 2,
         BulletType::TrackingBullet => 3,
@@ -150,7 +158,8 @@ pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, damages_who: DamagesW
         | BulletType::BasicBullet
         | BulletType::AimedBullet
         | BulletType::PredictBullet
-        | BulletType::TrackingBullet => (Point::new(5.0, 5.0), 15.0, 15.0),
+        | BulletType::TrackingBullet
+        | BulletType::BouncingBullet(_) => (Point::new(5.0, 5.0), 15.0, 15.0),
     };
 
     let bullet = Bullet {
@@ -177,6 +186,7 @@ pub enum EnemyType {
     PredictEnemy,
     TrackingEnemy,
     AimEnemy2,
+    BounceEnemy,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -220,6 +230,7 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
         EnemyType::PredictEnemy => (3, (55.0, 43.0), BulletType::PredictBullet, 90),
         EnemyType::TrackingEnemy => (3, (55.0, 43.0), BulletType::TrackingBullet, 180),
         EnemyType::AimEnemy2 => (5, (55.0, 43.0), BulletType::AimedBullet, 90),
+        EnemyType::BounceEnemy => (3, (55.0, 43.0), BulletType::BouncingBullet(2), 300),
     };
 
     let vel = match movement {
@@ -235,6 +246,7 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
         EnemyType::TrackingEnemy => 3,
         EnemyType::BasicEnemy2 => 4,
         EnemyType::AimEnemy2 => 5,
+        EnemyType::BounceEnemy => 7,
     };
 
     (
