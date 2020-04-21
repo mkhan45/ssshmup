@@ -54,7 +54,7 @@ impl<'a> System<'a> for SpawnBulletSys {
                 .get(player_entity.0)
                 .expect("error getting player position")
                 .0;
-            let bullet_pos: Point = player_pos + Vector::new(12.5, 5.0);
+            let bullet_pos: Point = player_pos + Vector::new(12.0, 5.0);
             let bullet = new_bullet(
                 player_data.bullet_type,
                 bullet_pos,

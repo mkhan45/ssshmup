@@ -107,7 +107,7 @@ impl<'a> System<'a> for EnemyShootSys {
                     (player_pos - pos).normalize() * speed
                 }
                 BulletType::PredictBullet => {
-                    let bullet_speed = 13.0f32;
+                    let bullet_speed = 10.0f32;
 
                     let mut player_projected_pos = player_pos;
 
@@ -117,6 +117,8 @@ impl<'a> System<'a> for EnemyShootSys {
                         let time_to_hit = dist_to_player / bullet_speed;
 
                         player_projected_pos = player_pos + player_vel * time_to_hit;
+                        player_projected_pos.x =
+                            player_projected_pos.x.max(0.0).min(crate::SCREEN_WIDTH);
                     });
 
                     let direction = (player_projected_pos - pos).normalize();
@@ -217,7 +219,7 @@ impl<'a> System<'a> for WaveCalcSys {
             2 => 14,
             3 => 20,
             4 => 24,
-            _ => current_wave.0 as u16 * 5 + 5,
+            _ => current_wave.0 as u16 * 4 + 5,
         };
         let mut difficulty = 0u16;
 

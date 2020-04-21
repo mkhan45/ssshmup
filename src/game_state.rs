@@ -127,10 +127,12 @@ impl EventHandler for GameState<'_, '_> {
                         .expect("error getting enemy spritesheet")
                         .clone();
 
-                    if let Some(mut player_hp) =
-                        hp_storage.get_mut(self.world.fetch::<PlayerEntity>().0)
-                    {
-                        player_hp.remaining += 1;
+                    if self.world.fetch::<CurrentWave>().0 != 1 {
+                        if let Some(mut player_hp) =
+                            hp_storage.get_mut(self.world.fetch::<PlayerEntity>().0)
+                        {
+                            player_hp.remaining += 1;
+                        }
                     }
 
                     let mut rng = rand::thread_rng();
@@ -205,21 +207,28 @@ impl EventHandler for GameState<'_, '_> {
                 .0;
 
             *player_vel /= 1.45;
+
+            let speed = if input::keyboard::is_key_pressed(ctx, KeyCode::Space) {
+                1.3
+            } else {
+                1.7
+            };
+
             if input::keyboard::is_key_pressed(ctx, KeyCode::W) && player_pos.y > 0.0 {
-                player_vel.y -= 1.5;
+                player_vel.y -= speed;
             }
             if input::keyboard::is_key_pressed(ctx, KeyCode::S)
                 && player_pos.y < crate::SCREEN_HEIGHT - 45.0
             {
-                player_vel.y += 1.5;
+                player_vel.y += speed;
             }
             if input::keyboard::is_key_pressed(ctx, KeyCode::A) && player_pos.x > 0.0 {
-                player_vel.x -= 1.5;
+                player_vel.x -= speed;
             }
             if input::keyboard::is_key_pressed(ctx, KeyCode::D)
                 && player_pos.x < crate::SCREEN_WIDTH - 45.0
             {
-                player_vel.x += 1.5;
+                player_vel.x += speed;
             }
 
             player_pos.y = player_pos.y.min(crate::SCREEN_HEIGHT - 45.0).max(0.0);

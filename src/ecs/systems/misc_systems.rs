@@ -202,7 +202,7 @@ impl<'a> System<'a> for BulletTrackingSys {
                         }
                         new_ty = Some(BulletType::TrackingBullet(frames_remaining - 1));
                         let direction = (player_pos - pos.0).normalize();
-                        let target_vel = direction * 8.0;
+                        let target_vel = direction * 7.0;
                         vel.0 += (target_vel - vel.0) * 0.02;
                     }
                     if let Some(ty) = new_ty {

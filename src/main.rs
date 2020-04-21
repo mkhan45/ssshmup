@@ -62,7 +62,7 @@ fn main() -> GameResult {
 
     let player_sprite =
         ggez::graphics::Image::new(ctx, "/player.png").expect("error loading player sprite");
-    let player = components::new_player(player_sprite, 5);
+    let player = components::new_player(player_sprite, 6);
     let player = components::create_player(&mut world, player);
     world.insert(components::PlayerEntity(player));
 

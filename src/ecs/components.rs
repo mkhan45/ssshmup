@@ -224,7 +224,7 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
         EnemyType::BasicEnemy2 => (5, (55.0, 43.0), BulletType::BasicBullet, 90),
         EnemyType::AimEnemy => (3, (55.0, 43.0), BulletType::AimedBullet, 180),
         EnemyType::PredictEnemy => (3, (55.0, 43.0), BulletType::PredictBullet, 90),
-        EnemyType::TrackingEnemy => (3, (55.0, 43.0), BulletType::TrackingBullet(5 * 60), 180),
+        EnemyType::TrackingEnemy => (3, (55.0, 43.0), BulletType::TrackingBullet(7 * 30), 180),
         EnemyType::AimEnemy2 => (5, (55.0, 43.0), BulletType::AimedBullet, 90),
         EnemyType::BounceEnemy => (3, (55.0, 43.0), BulletType::BouncingBullet(2), 180),
     };
@@ -244,6 +244,10 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
         EnemyType::BounceEnemy => 7,
     };
 
+    use rand::Rng;
+    let mut rng = rand::thread_rng();
+    let reload_offset = rng.gen_range(0, reload_speed / 2);
+
     (
         pos,
         Velocity(vel),
@@ -251,7 +255,7 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
             ty,
             movement,
             bullet_type,
-            reload_timer: reload_speed,
+            reload_timer: reload_offset,
             reload_speed,
         },
         HP::new(hp),
