@@ -32,10 +32,12 @@ impl<'a> System<'a> for IFrameSys {
 pub struct BulletCollSys;
 impl<'a> System<'a> for BulletCollSys {
     type SystemData = (
-        ReadStorage<'a, Bullet>,
+        WriteStorage<'a, Bullet>,
         ReadStorage<'a, Hitbox>,
         WriteStorage<'a, HP>,
         ReadStorage<'a, Position>,
+        WriteStorage<'a, Player>,
+        WriteStorage<'a, Velocity>,
         Entities<'a>,
         Read<'a, AnimatedSprites>,
         Read<'a, PlayerEntity>,
@@ -48,10 +50,12 @@ impl<'a> System<'a> for BulletCollSys {
     fn run(
         &mut self,
         (
-            bullets,
+            mut bullets,
             hitboxes,
             mut hp_storage,
             positions,
+            mut players,
+            mut vels,
             entities,
             animated_sprites,
             player_entity,
@@ -62,11 +66,13 @@ impl<'a> System<'a> for BulletCollSys {
         ): Self::SystemData,
     ) {
         let mut atleast_one_explosion = false;
+        let mut atleast_one_deflection = false;
+
         let sprite = animated_sprites
             .0
             .get("explosion")
             .expect("error getting explosion sprite");
-        (&bullets, &positions, &hitboxes, &entities)
+        (&mut bullets, &positions, &hitboxes, &entities)
             .join()
             .for_each(|(bullet, pos, bullet_hitbox, bullet_entity)| {
                 let bullet_rect = Rect::new(
@@ -96,14 +102,58 @@ impl<'a> System<'a> for BulletCollSys {
                                     hitbox.2,
                                 );
                                 if bullet_rect.overlaps(&collidee_rect) {
-                                    if hp.remaining >= bullet.damage {
-                                        hp.remaining -= bullet.damage;
-                                    } else {
-                                        hp.remaining = 0;
-                                    }
                                     if entity == player_entity.0 {
                                         hp_text.needs_redraw = true;
+                                        let player = players
+                                            .get_mut(player_entity.0)
+                                            .expect("error getting player entity");
+
+                                        let player_vel = vels
+                                            .get(player_entity.0)
+                                            .expect("error getting player vel")
+                                            .0;
+
+                                        if player.deflector_timer > 0 {
+                                            let bullet_vel = &mut vels
+                                                .get_mut(bullet_entity)
+                                                .expect("error getting deflected bullet vel")
+                                                .0;
+
+                                            let normal = {
+                                                let bullet_center = Point::new(
+                                                    bullet_rect.x + bullet_rect.w / 2.0,
+                                                    bullet_rect.y + bullet_rect.h / 2.0,
+                                                );
+                                                let player_center = Point::new(
+                                                    collidee_rect.x + collidee_rect.w / 2.0,
+                                                    collidee_rect.y + collidee_rect.h / 2.0,
+                                                );
+
+                                                (bullet_center - player_center).normalize()
+                                            };
+
+                                            let bullet_vel_dot_normal =
+                                                bullet_vel.x * normal.x + bullet_vel.y * normal.y;
+
+                                            // dbg!(bullet_vel, 2.0 * bullet_vel_dot_normal * normal);
+                                            *bullet_vel -= 2.0 * bullet_vel_dot_normal * normal;
+                                            *bullet_vel += player_vel;
+                                            if bullet_vel.x.abs() < 5.0 {
+                                                bullet_vel.x = 0.0;
+                                            }
+
+                                            if !matches!(bullet.ty, BulletType::TrackingBullet(_)) {
+                                                bullet.damages_who = DamagesWho::Enemy;
+                                                hp.remaining += bullet.damage;
+                                            }
+
+                                            bullet.damage *= 3;
+                                            player.deflector_timer = player.deflector_frames * 2;
+                                            atleast_one_deflection = true;
+                                            return;
+                                        }
                                     }
+
                                     if entities.delete(bullet_entity).is_err() {
                                         log::warn!("error deleting collided bullet entity")
                                     }
@@ -111,6 +161,7 @@ impl<'a> System<'a> for BulletCollSys {
                                     lazy_update.insert(explosion, *pos);
                                     lazy_update.insert(explosion, sprite.clone());
                                     atleast_one_explosion = true;
+                                    hp.remaining -= bullet.damage.min(hp.remaining);
                                 }
                             }
                         });
@@ -122,6 +173,13 @@ impl<'a> System<'a> for BulletCollSys {
                 queued_sounds.0.push(sound.clone());
             } else {
                 log::warn!("error playing explosion sound");
+            }
+        }
+        if atleast_one_deflection {
+            if let Some(sound) = sounds.0.get("deflect") {
+                queued_sounds.0.push(sound.clone());
+            } else {
+                log::warn!("error playing deflection sound");
             }
         }
     }

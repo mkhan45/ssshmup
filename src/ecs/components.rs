@@ -292,6 +292,12 @@ pub struct Player {
     pub bullet_type: BulletType,
     pub reload_speed: u32,
     pub reload_timer: u32,
+
+    pub deflector_frames: u32,
+    pub deflector_timer: u32,
+
+    pub deflector_reload_frames: u32,
+    pub deflector_cooldown: u32,
 }
 
 impl Default for Player {
@@ -300,6 +306,12 @@ impl Default for Player {
             bullet_type: BulletType::PlayerBullet,
             reload_speed: 12,
             reload_timer: 0,
+
+            deflector_frames: 6,
+            deflector_timer: 0,
+
+            deflector_reload_frames: 120,
+            deflector_cooldown: 0,
         }
     }
 }

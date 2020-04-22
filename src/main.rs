@@ -60,13 +60,20 @@ fn main() -> GameResult {
         vel_variance: 2.0,
     });
 
+    let mut sprites = HashMap::new();
     let player_sprite =
         ggez::graphics::Image::new(ctx, "/player.png").expect("error loading player sprite");
+    let player_deflector_sprite = ggez::graphics::Image::new(ctx, "/player_deflector.png")
+        .expect("error loading player deflector sprite");
+    let player_cooldown_sprite = ggez::graphics::Image::new(ctx, "/player_cooldown.png")
+        .expect("error loading player cooldown sprite");
+    sprites.insert("player".to_string(), player_sprite.clone());
+    sprites.insert("player_deflector".to_string(), player_deflector_sprite);
+    sprites.insert("player_cooldown".to_string(), player_cooldown_sprite);
     let player = components::new_player(player_sprite, 6);
     let player = components::create_player(&mut world, player);
     world.insert(components::PlayerEntity(player));
 
-    let sprites = HashMap::new();
     let mut animated_sprites = HashMap::new();
     let mut spritesheets = HashMap::new();
     {
@@ -154,6 +161,10 @@ fn main() -> GameResult {
             "dead".to_string(),
             SoundData::new(ctx, "/dead.ogg").expect("error loading dead.ogg"),
         );
+        sounds.insert(
+            "deflect".to_string(),
+            SoundData::new(ctx, "/deflect.ogg").expect("error loading deflect.ogg"),
+        );
         world.insert(resources::Sounds(sounds));
         world.insert(resources::QueuedSounds(Vec::new()));
     }
@@ -165,6 +176,7 @@ fn main() -> GameResult {
         .with(systems::IntegrateSys, "integrate_system", &[])
         .with(systems::StarMoveSys, "star_system", &[])
         .with(systems::ReloadTimerSys, "reload_timer_sys", &[])
+        .with(systems::DeflectorSys, "deflector_timer_sys", &[])
         .with(systems::EnemyShootSys, "enemy_shoot_sys", &[])
         .with(systems::AnimationSys, "animation_sys", &[])
         .with(

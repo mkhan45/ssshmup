@@ -158,3 +158,47 @@ impl<'a> System<'a> for PlayerCollSys {
             .expect("error getting player hp") = player_hp;
     }
 }
+
+pub struct DeflectorSys;
+impl<'a> System<'a> for DeflectorSys {
+    type SystemData = (
+        WriteStorage<'a, Player>,
+        WriteStorage<'a, Sprite>,
+        Read<'a, Sprites>,
+    );
+
+    fn run(&mut self, (mut players, mut sprite_storage, sprites): Self::SystemData) {
+        (&mut players, &mut sprite_storage)
+            .join()
+            .for_each(|(mut player, sprite)| {
+                if player.deflector_timer > 0 {
+                    player.deflector_timer -= 1;
+                }
+                if player.deflector_timer == 1 {
+                    let player_cooldown_sprite = sprites
+                        .0
+                        .get("player_cooldown")
+                        .expect("error getting player cooldown sprite");
+                    *sprite = Sprite::Img(player_cooldown_sprite.clone());
+                }
+                if player.deflector_timer == player.deflector_frames - 1 {
+                    let player_deflector_sprite = sprites
+                        .0
+                        .get("player_deflector")
+                        .expect("error getting player deflector sprite");
+                    *sprite = Sprite::Img(player_deflector_sprite.clone());
+                }
+
+                if player.deflector_cooldown > 0 {
+                    player.deflector_cooldown -= 1;
+                }
+                if player.deflector_cooldown == 1 {
+                    let player_default_sprite = sprites
+                        .0
+                        .get("player")
+                        .expect("error getting player default sprite");
+                    *sprite = Sprite::Img(player_default_sprite.clone());
+                }
+            });
+    }
+}

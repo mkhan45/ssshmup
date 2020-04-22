@@ -416,14 +416,19 @@ impl EventHandler for GameState<'_, '_> {
 
     fn key_down_event(
         &mut self,
-        ctx: &mut Context,
+        _ctx: &mut Context,
         keycode: KeyCode,
         _keymods: KeyMods,
         _repeat: bool,
     ) {
         if keycode == KeyCode::Space && self.world.fetch::<Dead>().0 {
-            let player_sprite = ggez::graphics::Image::new(ctx, "/player.png")
-                .expect("error loading player sprite");
+            let player_sprite = self
+                .world
+                .fetch::<Sprites>()
+                .0
+                .get("player")
+                .expect("error gettng player sprite")
+                .clone();
             let player = new_player(player_sprite, 5);
             let player = create_player(&mut self.world, player);
             self.world.insert(PlayerEntity(player));
@@ -445,6 +450,19 @@ impl EventHandler for GameState<'_, '_> {
                 });
             }
             self.world.maintain();
+        }
+
+        if keycode == KeyCode::LControl && !self.world.fetch::<Dead>().0 {
+            let mut players = self.world.write_storage::<Player>();
+            let player_entity = self.world.fetch::<PlayerEntity>().0;
+            let player = players
+                .get_mut(player_entity)
+                .expect("error getting player entity");
+
+            if player.deflector_cooldown == 0 {
+                player.deflector_timer = player.deflector_frames;
+                player.deflector_cooldown = player.deflector_reload_frames;
+            }
         }
     }
 }
