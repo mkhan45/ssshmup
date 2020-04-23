@@ -98,7 +98,7 @@ impl EventHandler for GameState<'_, '_> {
                 *hp_text.text.lock().expect("error locking hp_text") = {
                     use ggez::graphics::Scale;
                     let font = self.world.fetch::<GameFont>().0;
-                    let mut text = graphics::Text::new(format!("HP: {}\nWave: {}", hp, wave));
+                    let mut text = graphics::Text::new(format!("     x {}\nWave: {}", hp, wave));
                     text.set_font(font, Scale::uniform(48.0));
                     text
                 };
@@ -367,6 +367,21 @@ impl EventHandler for GameState<'_, '_> {
         let mesh = builder.build(ctx)?;
         graphics::draw(ctx, &mesh, DrawParam::new())?;
 
+        let heart_sprite = self
+            .world
+            .fetch::<Sprites>()
+            .0
+            .get("heart")
+            .expect("error getting heart sprite")
+            .clone();
+        graphics::draw(
+            ctx,
+            &heart_sprite,
+            graphics::DrawParam::new()
+                .dest([13.5, crate::SCREEN_HEIGHT - 130.0])
+                .scale(Vector::new(0.45, 0.45)),
+        )
+        .expect("error drawing heart sprite");
         let text_mutex = &self.world.fetch::<HPText>().text;
         let text = text_mutex.lock().expect("error locking hp text");
         graphics::draw(
