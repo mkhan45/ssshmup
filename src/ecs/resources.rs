@@ -4,6 +4,8 @@ use ggez::graphics::{spritebatch::SpriteBatch, Image};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use std::time::Duration;
+
 use crate::ecs::components::*;
 
 #[derive(Default)]
@@ -92,3 +94,6 @@ pub struct Sounds(pub HashMap<String, SoundData>);
 
 #[derive(Clone, Default)]
 pub struct QueuedSounds(pub Vec<SoundData>);
+
+#[derive(Clone, Default)]
+pub struct LastUpdate(pub Duration);

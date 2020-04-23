@@ -28,6 +28,18 @@ impl<'a, 'b> GameState<'a, 'b> {
 
 impl EventHandler for GameState<'_, '_> {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
+        {
+            let last_update = self.world.fetch::<LastUpdate>().0;
+            let time_since_start = ggez::timer::time_since_start(ctx);
+
+            let time_diff = time_since_start - last_update;
+            if time_diff < std::time::Duration::from_millis(16) {
+                return Ok(());
+            }
+
+            self.world.insert(LastUpdate(time_since_start));
+        }
+
         if cfg!(feature = "print_fps") && ggez::timer::ticks(&ctx) % 120 == 0 {
             dbg!(ggez::timer::fps(&ctx));
         }

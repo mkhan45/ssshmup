@@ -38,6 +38,7 @@ impl<'a> System<'a> for BulletCollSys {
         ReadStorage<'a, Position>,
         WriteStorage<'a, Player>,
         WriteStorage<'a, Velocity>,
+        ReadStorage<'a, Deflected>,
         Entities<'a>,
         Read<'a, AnimatedSprites>,
         Read<'a, PlayerEntity>,
@@ -56,6 +57,7 @@ impl<'a> System<'a> for BulletCollSys {
             positions,
             mut players,
             mut vels,
+            deflecteds,
             entities,
             animated_sprites,
             player_entity,
@@ -67,6 +69,7 @@ impl<'a> System<'a> for BulletCollSys {
     ) {
         let mut atleast_one_explosion = false;
         let mut atleast_one_deflection = false;
+        let mut player_deflection_hp = 0;
 
         let sprite = animated_sprites
             .0
@@ -138,16 +141,28 @@ impl<'a> System<'a> for BulletCollSys {
                                             // dbg!(bullet_vel, 2.0 * bullet_vel_dot_normal * normal);
                                             *bullet_vel -= 2.0 * bullet_vel_dot_normal * normal;
                                             *bullet_vel += player_vel;
-                                            if bullet_vel.x.abs() < 5.0 {
+                                            if bullet_vel.x.abs() < 8.0 {
                                                 bullet_vel.x = 0.0;
                                             }
 
-                                            if !matches!(bullet.ty, BulletType::TrackingBullet(_)) {
-                                                bullet.damages_who = DamagesWho::Enemy;
-                                                hp.remaining += bullet.damage;
+                                            let bullet_speed = bullet_vel.norm();
+                                            if bullet_speed < 8.0 {
+                                                *bullet_vel *= 8.0 / bullet_speed;
                                             }
 
-                                            bullet.damage *= 3;
+                                            if let BulletType::TrackingBullet(frames_remaining) =
+                                                bullet.ty
+                                            {
+                                                if frames_remaining > 10 {
+                                                    bullet.ty = BulletType::TrackingBullet(10);
+                                                }
+                                            } else {
+                                                bullet.damages_who = DamagesWho::Enemy;
+                                                bullet.damage *= 3;
+                                            }
+
+                                            lazy_update.insert(bullet_entity, Deflected::default());
+
                                             player.deflector_timer = player.deflector_frames * 2;
                                             atleast_one_deflection = true;
                                             return;
@@ -161,6 +176,11 @@ impl<'a> System<'a> for BulletCollSys {
                                     lazy_update.insert(explosion, *pos);
                                     lazy_update.insert(explosion, sprite.clone());
                                     atleast_one_explosion = true;
+
+                                    if deflecteds.get(bullet_entity).is_some() {
+                                        player_deflection_hp += bullet.damage / 3 * 2;
+                                        // deflected bullets do triple damage, and we want them to heal double damage
+                                    }
                                     hp.remaining -= bullet.damage.min(hp.remaining);
                                 }
                             }
@@ -181,6 +201,11 @@ impl<'a> System<'a> for BulletCollSys {
             } else {
                 log::warn!("error playing deflection sound");
             }
+        }
+
+        if player_deflection_hp > 0 {
+            hp_storage.get_mut(player_entity.0).unwrap().remaining += player_deflection_hp;
+            hp_text.needs_redraw = true;
         }
     }
 }

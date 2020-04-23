@@ -366,3 +366,7 @@ pub struct Star;
 #[derive(Clone, Copy, Debug, PartialEq, Component)]
 #[storage(DenseVecStorage)]
 pub struct Hitbox(pub Point, pub f32, pub f32);
+
+#[derive(Clone, Copy, PartialEq, Eq, Default, Component, Debug)]
+#[storage(NullStorage)]
+pub struct Deflected;

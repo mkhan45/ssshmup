@@ -106,6 +106,7 @@ fn main() -> GameResult {
             components::AnimatedSprite::new(explosion_img, 12, 16, true),
         );
     }
+    world.insert(resources::LastUpdate(std::time::Duration::new(0, 0)));
     world.insert(resources::Sprites(sprites));
     world.insert(resources::AnimatedSprites(animated_sprites));
     world.insert(resources::SpriteSheets(spritesheets));
