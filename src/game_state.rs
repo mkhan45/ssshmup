@@ -33,7 +33,7 @@ impl EventHandler for GameState<'_, '_> {
             let time_since_start = ggez::timer::time_since_start(ctx);
 
             let time_diff = time_since_start - last_update;
-            if time_diff < std::time::Duration::from_millis(32) {
+            if time_diff < std::time::Duration::from_millis(16) {
                 return Ok(());
             }
 

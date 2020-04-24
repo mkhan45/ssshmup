@@ -6,7 +6,7 @@ made with `ggez` and `specs`
 
 Prebuilt binaries for Windows and Linux can be found in the [releases tab](https://github.com/mkhan45/ssshmup/releases)
 
-![](image.png)
+![](game.gif)
 
 
 ## controls:
