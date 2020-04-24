@@ -12,5 +12,7 @@ Prebuilt binaries for Windows and Linux can be found in the [releases tab](https
 ## controls:
 
 WASD or Arrow keys to move
+
 Space to shoot
+
 LControl to activate deflector for .1 seconds, deflected bullets heal player if they hit an enemy. There is a two second cooldown
