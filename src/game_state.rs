@@ -19,9 +19,11 @@ pub struct GameState<'a, 'b> {
 
 impl<'a, 'b> GameState<'a, 'b> {
     pub fn new(mut world: World, dispatcher: Dispatcher<'a, 'b>) -> Self {
+        // the init star sys only runs once; afterwards the StarMoveSys handles everything
         let mut init_star_sys = systems::StarInitSys::default();
         specs::RunNow::setup(&mut init_star_sys, &mut world);
         init_star_sys.run_now(&world);
+
         GameState { world, dispatcher }
     }
 }
@@ -29,11 +31,12 @@ impl<'a, 'b> GameState<'a, 'b> {
 impl EventHandler for GameState<'_, '_> {
     fn update(&mut self, ctx: &mut Context) -> GameResult {
         {
+            // only update roughly every 60 fps
             let last_update = self.world.fetch::<LastUpdate>().0;
             let time_since_start = ggez::timer::time_since_start(ctx);
 
             let time_diff = time_since_start - last_update;
-            if time_diff < std::time::Duration::from_millis(16) {
+            if time_diff < std::time::Duration::from_millis(15) {
                 return Ok(());
             }
 
@@ -51,12 +54,14 @@ impl EventHandler for GameState<'_, '_> {
 
         let dead = self.world.fetch::<Dead>().0;
 
+        // player shooting
         if !dead && input::keyboard::is_key_pressed(ctx, KeyCode::Space) {
             let mut spawn_sys = systems::SpawnBulletSys::default();
             spawn_sys.run_now(&self.world);
         }
 
         {
+            // play all queued sounds
             use ggez::audio::Source;
 
             self.world
@@ -78,6 +83,7 @@ impl EventHandler for GameState<'_, '_> {
         }
 
         {
+            // update hp text if it has changed
             let hp_text = &mut self.world.fetch_mut::<HPText>();
             if hp_text.needs_redraw {
                 hp_text.needs_redraw = false;
@@ -106,6 +112,7 @@ impl EventHandler for GameState<'_, '_> {
         }
 
         {
+            // spawn new enemies if all enemies are dead
             let num_enemies = {
                 let enemies = self.world.read_storage::<Enemy>();
                 enemies.join().count()
@@ -206,6 +213,7 @@ impl EventHandler for GameState<'_, '_> {
         }
 
         if !dead {
+            // player movement controls
             let player_entity = self.world.fetch::<PlayerEntity>().0;
             let velocities = &mut self.world.write_storage::<Velocity>();
             let positions = &mut self.world.write_storage::<Position>();
@@ -254,6 +262,8 @@ impl EventHandler for GameState<'_, '_> {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         graphics::clear(ctx, Color::new(0.0, 0.0, 0.0, 1.0));
+
+        // this builder is used for all meshes, which is really just stars
         let mut builder = MeshBuilder::new();
         {
             let positions = self.world.read_storage::<Position>();
@@ -264,31 +274,39 @@ impl EventHandler for GameState<'_, '_> {
             let entities = self.world.entities();
             let animated_sprite_storage = self.world.read_storage::<AnimatedSprite>();
 
-            (&positions, &colorects, &stars)
-                .join()
-                .for_each(|(pos, colorect, _)| {
-                    if pos.0.y > 0.0 {
+            // stars need to be drawn first so they stay in the background,
+            // in practice they're the only colorects so it doesn't matter
+            {
+                (&positions, &colorects, &stars)
+                    .join()
+                    .for_each(|(pos, colorect, _)| {
+                        if pos.0.y > 0.0 {
+                            draw_colorect(&mut builder, (*pos).into(), &colorect);
+                        }
+                    });
+
+                (&positions, &colorects, !&stars)
+                    .join()
+                    .for_each(|(pos, colorect, _)| {
                         draw_colorect(&mut builder, (*pos).into(), &colorect);
-                    }
-                });
+                    });
+            }
 
-            (&positions, &colorects, !&stars)
-                .join()
-                .for_each(|(pos, colorect, _)| {
-                    draw_colorect(&mut builder, (*pos).into(), &colorect);
-                });
-
+            // draw all sprites, as part of a spritesheet or not
             (&positions, &sprites, &entities)
                 .join()
                 .for_each(|(pos, sprite, entity)| {
+                    // sprites with iframes remaining should be lower opacity
                     let draw_color = if let Some(hp) = hp_storage.get(entity) {
                         let opacity = (60 - hp.iframes as u32) as f32 / 60.0;
                         Color::new(1.0, 1.0, 1.0, opacity.powi(5))
                     } else {
                         graphics::WHITE
                     };
+
                     match sprite {
                         Sprite::Img(img) => {
+                            // a normal, sprite, in practice just the player
                             graphics::draw(
                                 ctx,
                                 img,
@@ -300,6 +318,8 @@ impl EventHandler for GameState<'_, '_> {
                             .expect("error drawing sprite");
                         }
                         Sprite::SpriteSheetInstance(spritesheet, index) => {
+                            // an instance of a spritesheet,
+                            // this includes bullets, enemies, etc.
                             let mut spritesheet =
                                 spritesheet.lock().expect("error locking spritesheet");
                             let frame_width = 1.0 / spritesheet.width as f32;
@@ -316,6 +336,7 @@ impl EventHandler for GameState<'_, '_> {
                     }
                 });
 
+            // animated sprites are drawn similarly to how spritesheet instances are
             (&positions, &animated_sprite_storage)
                 .join()
                 .for_each(|(pos, animated_sprite)| {
@@ -352,6 +373,7 @@ impl EventHandler for GameState<'_, '_> {
         }
 
         {
+            // clear spritebatches
             let spritesheets = self
                 .world
                 .get_mut::<SpriteSheets>()
@@ -364,9 +386,11 @@ impl EventHandler for GameState<'_, '_> {
             });
         }
 
+        // draw meshbuilder
         let mesh = builder.build(ctx)?;
         graphics::draw(ctx, &mesh, DrawParam::new())?;
 
+        // draw info text
         let heart_sprite = self
             .world
             .fetch::<Sprites>()
@@ -391,6 +415,7 @@ impl EventHandler for GameState<'_, '_> {
         )
         .expect("error drawing hp text");
 
+        // draw dead text
         if self.world.fetch::<Dead>().0 {
             let dead_text = &self.world.fetch::<DeadText>().0;
             let text = dead_text.lock().expect("error locking dead text");
@@ -416,6 +441,9 @@ impl EventHandler for GameState<'_, '_> {
     }
 
     fn resize_event(&mut self, ctx: &mut Context, width: f32, height: f32) {
+        // maintain aspect ratio regardless of window size
+        // if the screen is a vertical rectangle add space to the top and bottom,
+        // if it's horizontal add space to the left and right
         use crate::{SCREEN_HEIGHT, SCREEN_WIDTH};
         let aspect_ratio = height / width;
         let initial_ratio = SCREEN_HEIGHT / SCREEN_WIDTH;
@@ -449,6 +477,7 @@ impl EventHandler for GameState<'_, '_> {
         _repeat: bool,
     ) {
         if keycode == KeyCode::Space && self.world.fetch::<Dead>().0 {
+            // respawn/restart game
             let player_sprite = self
                 .world
                 .fetch::<Sprites>()
@@ -480,6 +509,7 @@ impl EventHandler for GameState<'_, '_> {
         }
 
         if keycode == KeyCode::LControl && !self.world.fetch::<Dead>().0 {
+            // deflection activator
             let mut players = self.world.write_storage::<Player>();
             let player_entity = self.world.fetch::<PlayerEntity>().0;
             let player = players

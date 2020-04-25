@@ -22,8 +22,9 @@ const VOLUME_MULTIPLIER: f32 = 0.2;
 
 fn main() -> GameResult {
     simple_logger::init_with_level(log::Level::Warn).expect("error initializing logger");
-    let (ctx, event_loop) = &mut ggez::ContextBuilder::new("Game", "Fish")
-        .window_setup(ggez::conf::WindowSetup::default().title("Game"))
+
+    let (ctx, event_loop) = &mut ggez::ContextBuilder::new("ssshmup", "Mikail Khan")
+        .window_setup(ggez::conf::WindowSetup::default().title("ssshmup"))
         .window_mode(
             ggez::conf::WindowMode::default()
                 .dimensions(SCREEN_WIDTH, SCREEN_HEIGHT)
@@ -32,15 +33,20 @@ fn main() -> GameResult {
         .build()
         .expect("error building context");
 
+    // for pixel art to work
     ggez::graphics::set_default_filter(ctx, ggez::graphics::FilterMode::Nearest);
+
+    // aspect ratio is maintained regardless of screen size
     ggez::graphics::set_screen_coordinates(
         ctx,
         ggez::graphics::Rect::new(0.0, 0.0, SCREEN_WIDTH, SCREEN_HEIGHT),
     )
     .expect("error setting default screen coordinates");
 
+    // initialize specs world and register components
+    // not all components have to be registered here if they're used in systems
+    // but it doesn't hurt
     let mut world = World::new();
-
     world.register::<components::Position>();
     world.register::<components::Player>();
     world.register::<components::Velocity>();
@@ -52,6 +58,7 @@ fn main() -> GameResult {
     world.register::<components::AnimatedSprite>();
     world.register::<components::Hitbox>();
 
+    // conttrols star generation
     world.insert(resources::StarInfo {
         num_stars: 60,
         size: 2.25,
@@ -60,6 +67,7 @@ fn main() -> GameResult {
         vel_variance: 2.0,
     });
 
+    // load sprites and put them in the specs world
     let mut sprites = HashMap::new();
     let player_sprite =
         ggez::graphics::Image::new(ctx, "/player.png").expect("error loading player sprite");
@@ -70,14 +78,12 @@ fn main() -> GameResult {
     sprites.insert("player".to_string(), player_sprite.clone());
     sprites.insert("player_deflector".to_string(), player_deflector_sprite);
     sprites.insert("player_cooldown".to_string(), player_cooldown_sprite);
-    let player = components::new_player(player_sprite, 6);
-    let player = components::create_player(&mut world, player);
-    world.insert(components::PlayerEntity(player));
 
     let heart_sprite =
         ggez::graphics::Image::new(ctx, "/heart.png").expect("error loading heart sprite");
     sprites.insert("heart".to_string(), heart_sprite);
 
+    // animated sprites and spritesheets are loaded separately
     let mut animated_sprites = HashMap::new();
     let mut spritesheets = HashMap::new();
     {
@@ -88,7 +94,7 @@ fn main() -> GameResult {
         spritesheets.insert(
             "bullets".to_string(),
             Arc::new(Mutex::new(resources::SpriteSheet {
-                width: 8,
+                width: 8, // spritesheet width has to be a power of two because of floating point rounding
                 batch: bullet_spritebatch,
             })),
         );
@@ -110,15 +116,24 @@ fn main() -> GameResult {
             components::AnimatedSprite::new(explosion_img, 12, 16, true),
         );
     }
-    world.insert(resources::LastUpdate(std::time::Duration::new(0, 0)));
     world.insert(resources::Sprites(sprites));
     world.insert(resources::AnimatedSprites(animated_sprites));
     world.insert(resources::SpriteSheets(spritesheets));
+
+    // initialize player entity
+    let player = components::new_player(player_sprite, 6);
+    let player = components::create_player(&mut world, player);
+    world.insert(components::PlayerEntity(player));
+
+    // default global values
+    world.insert(resources::LastUpdate(std::time::Duration::new(0, 0)));
     world.insert(resources::CurrentWave(0));
     world.insert(resources::QueuedEnemies(Vec::new()));
-    world.insert(resources::FramesToNextWave(0));
+    world.insert(resources::FramesToNextWave(30));
     world.insert(resources::Dead(false));
+
     {
+        // initialize text stuff
         use ggez::graphics::{Font, Scale, Text};
         let font = Font::new(ctx, "/fonts/Xolonium-Regular.ttf").expect("error loading font");
         let mut text = Text::new(format!("    x {}\nWave: {}", 5, 0));
@@ -138,6 +153,7 @@ fn main() -> GameResult {
     }
 
     {
+        // load sound effects and put them in specs world
         use ggez::audio::SoundData;
 
         let mut sounds = HashMap::new();

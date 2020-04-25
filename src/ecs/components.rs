@@ -138,19 +138,18 @@ pub type BulletTuple = (Position, Hitbox, Velocity, Bullet, u8);
 pub fn new_bullet(ty: BulletType, pos: Point, vel: Vector, damages_who: DamagesWho) -> BulletTuple {
     let damage = match ty {
         BulletType::PlayerBullet => 3,
-        BulletType::BasicBullet => 1,
-        BulletType::AimedBullet => 1,
-        BulletType::PredictBullet => 1,
-        BulletType::TrackingBullet(_) => 1,
-        BulletType::BouncingBullet(_) => 1,
+        BulletType::BasicBullet
+        | BulletType::AimedBullet
+        | BulletType::PredictBullet
+        | BulletType::TrackingBullet(_)
+        | BulletType::BouncingBullet(_) => 1,
     };
 
     let sprite_index = match ty {
         BulletType::BasicBullet => 0,
-        BulletType::AimedBullet => 1,
+        BulletType::AimedBullet | BulletType::PlayerBullet => 1,
         BulletType::PredictBullet => 2,
         BulletType::TrackingBullet(_) => 3,
-        BulletType::PlayerBullet => 1,
         BulletType::BouncingBullet(_) => 4,
     };
 
@@ -264,6 +263,7 @@ pub fn new_enemy(ty: EnemyType, pos: Point, movement: MovementType) -> EnemyTupl
     )
 }
 
+// never used but useful for manually spawning enemies
 #[allow(dead_code)]
 pub fn create_enemy(world: &mut World, enemy: EnemyTuple) -> Entity {
     let spritesheet = {

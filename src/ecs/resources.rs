@@ -8,6 +8,7 @@ use std::time::Duration;
 
 use crate::ecs::components::*;
 
+// split into two parts for formatting
 #[derive(Default)]
 pub struct DeadText(pub Mutex<[ggez::graphics::Text; 2]>);
 
@@ -23,9 +24,11 @@ pub struct HPText {
     pub text: Mutex<ggez::graphics::Text>,
 }
 
+// for use with wave spawning
 #[derive(Clone, Default)]
 pub struct QueuedEnemies(pub Vec<(Point, EnemyType)>);
 
+// all the hashmaps here could be static lookup tables
 #[derive(Clone, Default)]
 pub struct Sprites(pub HashMap<String, Image>);
 
@@ -37,9 +40,6 @@ pub struct SpriteSheet {
 
 #[derive(Clone, Default)]
 pub struct SpriteSheets(pub HashMap<String, Arc<Mutex<SpriteSheet>>>);
-
-#[derive(Clone)]
-pub struct BulletSpriteBatch(pub SpriteBatch);
 
 #[derive(Clone, Default)]
 pub struct AnimatedSprites(pub HashMap<String, crate::ecs::components::AnimatedSprite>);
